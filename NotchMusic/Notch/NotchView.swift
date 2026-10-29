@@ -7,6 +7,7 @@ struct NotchView: View {
 
     @State private var scrubPosition: TimeInterval?
     @State private var showsVolumeSlider = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var accent: Color {
         Color(nsColor: musicMonitor.snapshot?.accentColor ?? ArtworkPalette.fallback)
@@ -89,9 +90,13 @@ struct NotchView: View {
     }
 
     private var expansionAnimation: Animation {
-        panelState.isExpanded
-            ? .spring(response: 0.42, dampingFraction: 0.82, blendDuration: 0)
-            : .spring(response: 0.46, dampingFraction: 1, blendDuration: 0)
+        if reduceMotion {
+            return .easeOut(duration: 0.18)
+        }
+
+        return panelState.isExpanded
+            ? .spring(response: 0.50, dampingFraction: 0.74, blendDuration: 0)
+            : .spring(response: 0.52, dampingFraction: 0.74, blendDuration: 0)
     }
 
     private var compactContent: some View {
