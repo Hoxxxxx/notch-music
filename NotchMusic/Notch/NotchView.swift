@@ -8,7 +8,9 @@ struct NotchView: View {
     @State private var scrubPosition: TimeInterval?
     @State private var showsVolumeSlider = false
 
-    private let accent = Color(red: 1.0, green: 0.38, blue: 0.30)
+    private var accent: Color {
+        Color(nsColor: musicMonitor.snapshot?.accentColor ?? ArtworkPalette.fallback)
+    }
 
     var body: some View {
         let isPlaying = musicMonitor.snapshot?.isPlaying == true
@@ -80,9 +82,7 @@ struct NotchView: View {
 
             Spacer(minLength: 0)
 
-            Image(systemName: musicMonitor.snapshot?.isPlaying == true ? "waveform" : "music.note")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.72))
+            CompactPlaybackIndicator(color: accent)
         }
         .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -123,69 +123,73 @@ struct NotchView: View {
     }
 
     private func nowPlaying(_ snapshot: MusicSnapshot) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            artworkView(snapshot.artwork, size: 78)
+        VStack(spacing: 9) {
+            HStack(alignment: .top, spacing: 14) {
+                artworkView(snapshot.artwork, size: 88)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(snapshot.title)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(snapshot.title)
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
 
-                Text(snapshot.artist.isEmpty ? "Apple Music" : snapshot.artist)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(1)
+                    Text(snapshot.artist.isEmpty ? "Apple Music" : snapshot.artist)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .lineLimit(1)
 
-                Text(snapshot.album.isEmpty ? " " : snapshot.album)
-                    .font(.system(size: 10, weight: .regular, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.42))
-                    .lineLimit(1)
-
-                Spacer(minLength: 4)
-
-                playbackControls(snapshot)
-
-                Spacer(minLength: 4)
-
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let elapsed = snapshot.elapsed(at: context.date)
-                    let displayedPosition = scrubPosition ?? elapsed
-                    VStack(spacing: 5) {
-                        Slider(
-                            value: Binding(
-                                get: { scrubPosition ?? elapsed },
-                                set: { scrubPosition = $0 }
-                            ),
-                            in: 0...max(snapshot.duration, 1),
-                            onEditingChanged: { editing in
-                                if editing {
-                                    if scrubPosition == nil {
-                                        scrubPosition = elapsed
-                                    }
-                                } else if let scrubPosition {
-                                    musicMonitor.seek(to: scrubPosition)
-                                    self.scrubPosition = nil
-                                }
-                            }
-                        )
-                        .controlSize(.mini)
-                        .tint(accent)
-                        .disabled(snapshot.duration <= 0 || musicMonitor.isSendingCommand)
-                        .accessibilityLabel("播放进度")
-
-                        HStack {
-                            Text(timeString(displayedPosition))
-                            Spacer()
-                            Text(timeString(snapshot.duration))
-                        }
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .monospacedDigit()
+                    Text(snapshot.album.isEmpty ? " " : snapshot.album)
+                        .font(.system(size: 10, weight: .regular, design: .rounded))
                         .foregroundStyle(.white.opacity(0.42))
-                    }
+                        .lineLimit(1)
+
+                    Spacer(minLength: 4)
+
+                    playbackControls(snapshot)
                 }
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .topLeading
+                )
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            playbackProgress(snapshot)
+        }
+    }
+
+    private func playbackProgress(_ snapshot: MusicSnapshot) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let elapsed = snapshot.elapsed(at: context.date)
+            let displayedPosition = scrubPosition ?? elapsed
+
+            VStack(spacing: 4) {
+                AccentProgressSlider(
+                    value: displayedPosition,
+                    range: 0...max(snapshot.duration, 1),
+                    color: Color(nsColor: snapshot.accentColor),
+                    isEnabled: snapshot.duration > 0 && !musicMonitor.isSendingCommand,
+                    onChange: { scrubPosition = $0 },
+                    onEditingStarted: {
+                        if scrubPosition == nil {
+                            scrubPosition = elapsed
+                        }
+                    },
+                    onCommit: { position in
+                        musicMonitor.seek(to: position)
+                        scrubPosition = nil
+                    }
+                )
+
+                HStack {
+                    Text(timeString(displayedPosition))
+                    Spacer()
+                    Text(timeString(snapshot.duration))
+                }
+                .font(.system(size: 9, weight: .medium, design: .monospaced))
+                .monospacedDigit()
+                .foregroundStyle(.white.opacity(0.42))
+            }
         }
     }
 
@@ -409,6 +413,93 @@ struct NotchView: View {
     }
 }
 
+private struct AccentProgressSlider: View {
+    let value: Double
+    let range: ClosedRange<Double>
+    let color: Color
+    let isEnabled: Bool
+    let onChange: (Double) -> Void
+    let onEditingStarted: () -> Void
+    let onCommit: (Double) -> Void
+
+    @State private var isEditing = false
+
+    private let thumbSize: CGFloat = 14
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let usableWidth = max(width - thumbSize, 0)
+            let fraction = valueFraction
+            let thumbOffset = usableWidth * fraction
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.white.opacity(0.16))
+                    .frame(height: 3)
+
+                Capsule()
+                    .fill(color)
+                    .frame(width: thumbOffset + thumbSize / 2, height: 3)
+
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: thumbSize, height: thumbSize)
+                    .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+                    .offset(x: thumbOffset)
+            }
+            .frame(width: width, height: thumbSize)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gesture in
+                        guard isEnabled else { return }
+                        if !isEditing {
+                            isEditing = true
+                            onEditingStarted()
+                        }
+                        onChange(value(at: gesture.location.x, width: width))
+                    }
+                    .onEnded { gesture in
+                        guard isEnabled else { return }
+                        let finalValue = value(at: gesture.location.x, width: width)
+                        onChange(finalValue)
+                        isEditing = false
+                        onCommit(finalValue)
+                    }
+            )
+        }
+        .frame(height: thumbSize)
+        .opacity(isEnabled ? 1 : 0.5)
+        .allowsHitTesting(isEnabled)
+        .accessibilityElement()
+        .accessibilityLabel("播放进度")
+        .accessibilityValue("\(Int(valueFraction * 100))%")
+        .accessibilityAdjustableAction { direction in
+            guard isEnabled else { return }
+            let span = range.upperBound - range.lowerBound
+            let step = max(span / 100, 1)
+            let adjusted = direction == .increment ? value + step : value - step
+            let clamped = min(max(adjusted, range.lowerBound), range.upperBound)
+            onChange(clamped)
+            onCommit(clamped)
+        }
+    }
+
+    private var valueFraction: Double {
+        let span = range.upperBound - range.lowerBound
+        guard span > 0 else { return 0 }
+        return min(max((value - range.lowerBound) / span, 0), 1)
+    }
+
+    private func value(at x: CGFloat, width: CGFloat) -> Double {
+        let usableWidth = max(width - thumbSize, 1)
+        let fraction = min(max((x - thumbSize / 2) / usableWidth, 0), 1)
+        let span = range.upperBound - range.lowerBound
+        return range.lowerBound + span * fraction
+    }
+}
+
 private struct NotchBackdrop: View {
     let cornerRadius: CGFloat
 
@@ -448,6 +539,31 @@ private struct NotchShape: Shape {
         )
         path.closeSubpath()
         return path
+    }
+}
+
+private struct CompactPlaybackIndicator: View {
+    let color: Color
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            let time = context.date.timeIntervalSinceReferenceDate
+
+            HStack(alignment: .center, spacing: 2) {
+                ForEach(0..<3, id: \.self) { index in
+                    Capsule()
+                        .fill(color)
+                        .frame(width: 2.5, height: barHeight(at: time, index: index))
+                }
+            }
+            .frame(width: 13, height: 12)
+        }
+        .accessibilityLabel("正在播放")
+    }
+
+    private func barHeight(at time: TimeInterval, index: Int) -> CGFloat {
+        let phase = time * 3.2 + Double(index) * 1.7
+        return CGFloat(4 + (sin(phase) + 1) * 3.5)
     }
 }
 
