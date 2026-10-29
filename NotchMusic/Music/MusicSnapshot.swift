@@ -21,8 +21,17 @@ struct MusicSnapshot {
         return min(value, duration)
     }
 
-    func progress(at date: Date) -> Double {
-        guard duration > 0 else { return 0 }
-        return min(max(elapsed(at: date) / duration, 0), 1)
+    func updatingPosition(_ position: TimeInterval) -> MusicSnapshot {
+        MusicSnapshot(
+            trackID: trackID,
+            title: title,
+            artist: artist,
+            album: album,
+            duration: duration,
+            position: min(max(position, 0), duration),
+            isPlaying: isPlaying,
+            artwork: artwork,
+            sampledAt: Date()
+        )
     }
 }

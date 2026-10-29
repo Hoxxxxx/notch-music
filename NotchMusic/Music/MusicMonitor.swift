@@ -84,6 +84,13 @@ final class MusicMonitor: ObservableObject {
         perform(.nextTrack)
     }
 
+    func seek(to position: TimeInterval) {
+        guard let snapshot, snapshot.duration > 0 else { return }
+        let clamped = min(max(position, 0), snapshot.duration)
+        self.snapshot = snapshot.updatingPosition(clamped)
+        perform(.seek(to: clamped))
+    }
+
     private func startPolling() {
         pollTask?.cancel()
         pollTask = Task { [weak self] in

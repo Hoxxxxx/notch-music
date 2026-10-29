@@ -21,6 +21,7 @@ enum AppleMusicCommand: Sendable {
     case previousTrack
     case togglePlayPause
     case nextTrack
+    case seek(to: TimeInterval)
 
     fileprivate var script: String {
         switch self {
@@ -40,6 +41,17 @@ enum AppleMusicCommand: Sendable {
             return """
             tell application "Music"
                 next track
+            end tell
+            """
+        case .seek(let position):
+            let value = String(
+                format: "%.3f",
+                locale: Locale(identifier: "en_US_POSIX"),
+                position
+            )
+            return """
+            tell application "Music"
+                set player position to \(value)
             end tell
             """
         }

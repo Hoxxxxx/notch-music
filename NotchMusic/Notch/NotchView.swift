@@ -5,6 +5,8 @@ struct NotchView: View {
     @ObservedObject var musicMonitor: MusicMonitor
     @ObservedObject var panelState: NotchPanelState
 
+    @State private var scrubPosition: TimeInterval?
+
     private let accent = Color(red: 1.0, green: 0.38, blue: 0.30)
 
     var body: some View {
@@ -117,16 +119,32 @@ struct NotchView: View {
 
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let elapsed = snapshot.elapsed(at: context.date)
+                    let displayedPosition = scrubPosition ?? elapsed
                     VStack(spacing: 5) {
-                        ProgressBar(
-                            progress: snapshot.duration > 0
-                                ? snapshot.progress(at: context.date)
-                                : 0,
-                            accent: accent
+                        Slider(
+                            value: Binding(
+                                get: { scrubPosition ?? elapsed },
+                                set: { scrubPosition = $0 }
+                            ),
+                            in: 0...max(snapshot.duration, 1),
+                            onEditingChanged: { editing in
+                                if editing {
+                                    if scrubPosition == nil {
+                                        scrubPosition = elapsed
+                                    }
+                                } else if let scrubPosition {
+                                    musicMonitor.seek(to: scrubPosition)
+                                    self.scrubPosition = nil
+                                }
+                            }
                         )
+                        .controlSize(.mini)
+                        .tint(accent)
+                        .disabled(snapshot.duration <= 0 || musicMonitor.isSendingCommand)
+                        .accessibilityLabel("播放进度")
 
                         HStack {
-                            Text(timeString(elapsed))
+                            Text(timeString(displayedPosition))
                             Spacer()
                             Text(timeString(snapshot.duration))
                         }
@@ -350,25 +368,6 @@ private struct NotchShape: Shape {
         )
         path.closeSubpath()
         return path
-    }
-}
-
-private struct ProgressBar: View {
-    let progress: Double
-    let accent: Color
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.14))
-
-                Capsule()
-                    .fill(accent)
-                    .frame(width: max(0, proxy.size.width * min(max(progress, 0), 1)))
-            }
-        }
-        .frame(height: 3)
     }
 }
 
