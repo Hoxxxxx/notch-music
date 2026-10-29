@@ -27,7 +27,12 @@ struct NotchView: View {
 
         VStack(spacing: 0) {
             ZStack {
-                NotchBackdrop(cornerRadius: cornerRadius)
+                NotchBackdrop(
+                    cornerRadius: cornerRadius,
+                    artwork: musicMonitor.snapshot?.artwork,
+                    accent: accent,
+                    isExpanded: panelState.isExpanded
+                )
 
                 if panelState.isExpanded {
                     expandedContent
@@ -502,19 +507,106 @@ private struct AccentProgressSlider: View {
 
 private struct NotchBackdrop: View {
     let cornerRadius: CGFloat
+    let artwork: NSImage?
+    let accent: Color
+    let isExpanded: Bool
 
     var body: some View {
-        NotchShape(cornerRadius: cornerRadius)
-            .fill(
+        GeometryReader { geometry in
+            ZStack {
+                Color.black
+
+                if let artwork {
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(
+                            width: geometry.size.width,
+                            height: geometry.size.height
+                        )
+                        .clipped()
+                        .scaleEffect(1.3)
+                        .saturation(1.55)
+                        .contrast(1.08)
+                        .brightness(0.08)
+                        .blur(radius: 32)
+                        .opacity(isExpanded ? 0.9 : 0)
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .white, location: 0),
+                                    .init(color: .white.opacity(0.94), location: 0.24),
+                                    .init(color: .white.opacity(0.22), location: 0.48),
+                                    .init(color: .clear, location: 0.62)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    RadialGradient(
+                        colors: [
+                            accent.opacity(0.2),
+                            .clear
+                        ],
+                        center: UnitPoint(x: 0.08, y: 0.32),
+                        startRadius: 0,
+                        endRadius: geometry.size.width * 0.58
+                    )
+                    .blendMode(.screen)
+                } else if isExpanded {
+                    RadialGradient(
+                        colors: [
+                            accent.opacity(0.34),
+                            .black.opacity(0.92)
+                        ],
+                        center: .bottomLeading,
+                        startRadius: 0,
+                        endRadius: geometry.size.width
+                    )
+                }
+
                 LinearGradient(
-                    colors: [
-                        .black,
-                        Color(red: 0.025, green: 0.025, blue: 0.03)
+                    stops: [
+                        .init(
+                            color: .black.opacity(isExpanded ? 0.18 : 0),
+                            location: 0
+                        ),
+                        .init(
+                            color: .black.opacity(isExpanded ? 0.62 : 0),
+                            location: 0.52
+                        ),
+                        .init(
+                            color: .black.opacity(isExpanded ? 0.86 : 0),
+                            location: 1
+                        )
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-            )
+
+                if artwork != nil, isExpanded {
+                    RadialGradient(
+                        colors: [
+                            .black.opacity(0.42),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 10,
+                        endRadius: max(
+                            geometry.size.width,
+                            geometry.size.height
+                        ) * 0.68
+                    )
+                }
+            }
+        }
+        .clipShape(NotchShape(cornerRadius: cornerRadius))
+        .accessibilityHidden(true)
+        .animation(
+            .easeInOut(duration: 0.36),
+            value: isExpanded
+        )
     }
 }
 
