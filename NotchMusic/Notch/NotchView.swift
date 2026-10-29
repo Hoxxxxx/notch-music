@@ -109,7 +109,11 @@ struct NotchView: View {
                     .foregroundStyle(.white.opacity(0.42))
                     .lineLimit(1)
 
-                Spacer(minLength: 6)
+                Spacer(minLength: 4)
+
+                playbackControls(snapshot)
+
+                Spacer(minLength: 4)
 
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let elapsed = snapshot.elapsed(at: context.date)
@@ -134,6 +138,34 @@ struct NotchView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    private func playbackControls(_ snapshot: MusicSnapshot) -> some View {
+        HStack(spacing: 8) {
+            PlaybackButton(
+                systemName: "backward.fill",
+                label: "上一首",
+                accent: accent,
+                action: musicMonitor.previousTrack
+            )
+
+            PlaybackButton(
+                systemName: snapshot.isPlaying ? "pause.fill" : "play.fill",
+                label: snapshot.isPlaying ? "暂停" : "播放",
+                accent: accent,
+                emphasized: true,
+                action: musicMonitor.togglePlayPause
+            )
+
+            PlaybackButton(
+                systemName: "forward.fill",
+                label: "下一首",
+                accent: accent,
+                action: musicMonitor.nextTrack
+            )
+        }
+        .disabled(musicMonitor.isSendingCommand)
+        .opacity(musicMonitor.isSendingCommand ? 0.55 : 1)
     }
 
     private func artworkView(_ artwork: NSImage?, size: CGFloat) -> some View {
@@ -337,6 +369,31 @@ private struct ProgressBar: View {
             }
         }
         .frame(height: 3)
+    }
+}
+
+private struct PlaybackButton: View {
+    let systemName: String
+    let label: String
+    let accent: Color
+    var emphasized = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: emphasized ? 11 : 10, weight: .bold))
+                .foregroundStyle(.white.opacity(emphasized ? 1 : 0.76))
+                .frame(width: 25, height: 25)
+                .background(
+                    emphasized ? accent : Color.white.opacity(0.12),
+                    in: Circle()
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
     }
 }
 

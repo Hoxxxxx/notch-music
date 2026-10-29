@@ -17,6 +17,35 @@ enum AppleMusicClientError: Error, Sendable {
     case scriptError(String)
 }
 
+enum AppleMusicCommand: Sendable {
+    case previousTrack
+    case togglePlayPause
+    case nextTrack
+
+    fileprivate var script: String {
+        switch self {
+        case .previousTrack:
+            return """
+            tell application "Music"
+                previous track
+            end tell
+            """
+        case .togglePlayPause:
+            return """
+            tell application "Music"
+                playpause
+            end tell
+            """
+        case .nextTrack:
+            return """
+            tell application "Music"
+                next track
+            end tell
+            """
+        }
+    }
+}
+
 final class AppleMusicClient: @unchecked Sendable {
     private let queue = DispatchQueue(label: "NotchMusic.AppleMusicClient")
     private let artworkCacheLimit = 24
@@ -27,6 +56,16 @@ final class AppleMusicClient: @unchecked Sendable {
         await withCheckedContinuation { continuation in
             queue.async {
                 continuation.resume(returning: self.readSynchronously())
+            }
+        }
+    }
+
+    func send(_ command: AppleMusicCommand) async -> Result<Void, AppleMusicClientError> {
+        await withCheckedContinuation { continuation in
+            queue.async {
+                continuation.resume(
+                    returning: self.run(command.script).map { _ in () }
+                )
             }
         }
     }

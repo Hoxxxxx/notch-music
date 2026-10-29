@@ -95,7 +95,7 @@ final class NotchPanelController {
             ? max(340, metrics.notchWidth + 150)
             : max(230, metrics.notchWidth + 56)
         let height: CGFloat = expanded
-            ? 164
+            ? 188
             : max(32, metrics.topInset)
 
         let frame = NSRect(

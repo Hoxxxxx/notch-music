@@ -65,7 +65,7 @@ struct SettingsView: View {
 
             Divider()
 
-            Text("NotchMusic 只读取当前曲目信息，不上传歌曲、封面或播放记录。")
+            Text("NotchMusic 通过 AppleScript 读取曲目并发送播放控制，不上传歌曲、封面或播放记录。")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -106,6 +106,6 @@ struct SettingsView: View {
     }
 
     private var versionString: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0"
     }
 }

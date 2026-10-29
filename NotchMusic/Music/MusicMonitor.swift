@@ -9,6 +9,7 @@ final class MusicMonitor: ObservableObject {
     @Published private(set) var isMusicRunning = false
     @Published private(set) var needsPermission = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var isSendingCommand = false
 
     private let client = AppleMusicClient()
     private let connectionKey = "NotchMusic.didConnectAppleMusic"
@@ -71,6 +72,18 @@ final class MusicMonitor: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    func previousTrack() {
+        perform(.previousTrack)
+    }
+
+    func togglePlayPause() {
+        perform(.togglePlayPause)
+    }
+
+    func nextTrack() {
+        perform(.nextTrack)
+    }
+
     private func startPolling() {
         pollTask?.cancel()
         pollTask = Task { [weak self] in
@@ -126,6 +139,30 @@ final class MusicMonitor: ObservableObject {
             case .scriptError(let message):
                 needsPermission = false
                 errorMessage = message
+            }
+        }
+    }
+
+    private func perform(_ command: AppleMusicCommand) {
+        guard isConnected, isMusicRunning, !isSendingCommand else { return }
+        isSendingCommand = true
+
+        Task {
+            let result = await client.send(command)
+            isSendingCommand = false
+            guard !Task.isCancelled else { return }
+
+            switch result {
+            case .success:
+                await refresh()
+            case .failure(let error):
+                switch error {
+                case .permissionDenied:
+                    needsPermission = true
+                    errorMessage = nil
+                case .scriptError(let message):
+                    errorMessage = message
+                }
             }
         }
     }
