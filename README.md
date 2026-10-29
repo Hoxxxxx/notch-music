@@ -61,7 +61,7 @@ open .build/Build/Products/Debug/NotchMusic.app
 - 未签名、未公证的构建可能触发 Gatekeeper 提示。
 - 未签名构建的自动化权限可能因重新构建而需要重新授权。
 - 当前不包含 App Store 分发配置。
-- 当前 Bundle ID 为本地开发用的 `com.local.NotchMusic`，正式发布前需要改成你自己的唯一 ID。
+- 当前 Bundle ID 为 `io.github.hoxxxxx.NotchMusic`。
 
 ## 许可证
 
