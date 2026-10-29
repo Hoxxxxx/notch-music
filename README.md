@@ -17,7 +17,9 @@
 - 显示封面、歌曲名、歌手、专辑和播放进度
 - 支持上一首、播放/暂停和下一首
 - 支持拖动播放进度
-- 鼠标悬停展开，移出收起
+- 支持调节 Apple Music 音量
+- 未播放时收起宽度与内建刘海一致
+- 鼠标短暂悬停或点击后弹簧展开，移出收起
 - 不使用 Accessibility、Screen Recording 或私有 API
 
 ## 构建
@@ -52,7 +54,7 @@ open .build/Build/Products/Debug/NotchMusic.app
 
 ## 实现说明
 
-应用通过 AppleScript 自动化接口读取 Apple Music 的当前曲目信息，并发送上一首、播放/暂停、下一首和播放位置命令。它不会控制其他播放器，也不会使用 `MediaRemote` 等私有 API。
+应用通过 AppleScript 自动化接口读取 Apple Music 的当前曲目信息，并发送上一首、播放/暂停、下一首、播放位置和音量命令。它不会控制其他播放器，也不会使用 `MediaRemote` 等私有 API。
 
 界面和交互参考了 [Boring Notch](https://github.com/TheBoredTeam/boring.notch)，但没有复制其代码。Boring Notch 使用 GPL-3.0 许可证，本项目使用独立的 MIT 实现。
 

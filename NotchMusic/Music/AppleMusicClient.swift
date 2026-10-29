@@ -9,6 +9,7 @@ struct MusicReadResult: Sendable {
     let duration: TimeInterval
     let position: TimeInterval
     let isPlaying: Bool
+    let volume: Double
     let artworkData: Data?
 }
 
@@ -22,6 +23,7 @@ enum AppleMusicCommand: Sendable {
     case togglePlayPause
     case nextTrack
     case seek(to: TimeInterval)
+    case setVolume(Double)
 
     fileprivate var script: String {
         switch self {
@@ -52,6 +54,13 @@ enum AppleMusicCommand: Sendable {
             return """
             tell application "Music"
                 set player position to \(value)
+            end tell
+            """
+        case .setVolume(let volume):
+            let percentage = Int((min(max(volume, 0), 1) * 100).rounded())
+            return """
+            tell application "Music"
+                set sound volume to \(percentage)
             end tell
             """
         }
@@ -108,6 +117,7 @@ final class AppleMusicClient: @unchecked Sendable {
                 duration: double(at: 6, from: descriptor),
                 position: double(at: 7, from: descriptor),
                 isPlaying: state.caseInsensitiveCompare("playing") == .orderedSame,
+                volume: min(max(double(at: 8, from: descriptor) / 100, 0), 1),
                 artworkData: artworkData(for: trackID)
             )
         )
@@ -178,9 +188,10 @@ final class AppleMusicClient: @unchecked Sendable {
             set trackAlbum to album of t
             set trackDuration to duration of t
             set trackPosition to player position
-            return {stateText, trackID, trackName, trackArtist, trackAlbum, trackDuration, trackPosition}
+            set trackVolume to sound volume
+            return {stateText, trackID, trackName, trackArtist, trackAlbum, trackDuration, trackPosition, trackVolume}
         on error
-            return {stateText, "", "", "", "", 0, 0}
+            return {stateText, "", "", "", "", 0, 0, 0}
         end try
     end tell
     """

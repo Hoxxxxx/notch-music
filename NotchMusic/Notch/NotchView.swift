@@ -6,40 +6,71 @@ struct NotchView: View {
     @ObservedObject var panelState: NotchPanelState
 
     @State private var scrubPosition: TimeInterval?
+    @State private var showsVolumeSlider = false
 
     private let accent = Color(red: 1.0, green: 0.38, blue: 0.30)
 
     var body: some View {
+        let isPlaying = musicMonitor.snapshot?.isPlaying == true
+        let size = CGSize(
+            width: panelState.isExpanded
+                ? NotchLayout.expandedWidth(notchWidth: panelState.notchWidth)
+                : NotchLayout.compactWidth(
+                    notchWidth: panelState.notchWidth,
+                    isPlaying: isPlaying
+                ),
+            height: panelState.isExpanded ? NotchLayout.expandedHeight : panelState.topInset
+        )
         let cornerRadius: CGFloat = panelState.isExpanded ? 22 : 14
 
-        ZStack {
-            NotchBackdrop(cornerRadius: cornerRadius)
+        VStack(spacing: 0) {
+            ZStack {
+                NotchBackdrop(cornerRadius: cornerRadius)
 
-            if panelState.isExpanded {
-                expandedContent
-                    .transition(
-                        .opacity.combined(
-                            with: .scale(scale: 0.98, anchor: .top)
-                        )
-                    )
-            } else {
-                compactContent
-                    .transition(.opacity)
+                if panelState.isExpanded {
+                    expandedContent
+                        .transition(.opacity)
+                } else if isPlaying {
+                    compactContent
+                        .transition(.opacity)
+                }
             }
+            .frame(width: size.width, height: size.height)
+            .clipShape(NotchShape(cornerRadius: cornerRadius))
+            .shadow(
+                color: panelState.isExpanded ? .black.opacity(0.65) : .clear,
+                radius: 6,
+                y: 2
+            )
+            .overlay {
+                NotchShape(cornerRadius: cornerRadius)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+            }
+            .contentShape(NotchShape(cornerRadius: cornerRadius))
+            .onHover { hovering in
+                panelState.setHovering(hovering)
+            }
+            .onTapGesture {
+                panelState.expand()
+            }
+
+            Spacer(minLength: 0)
         }
-        .clipShape(NotchShape(cornerRadius: cornerRadius))
-        .overlay {
-            NotchShape(cornerRadius: cornerRadius)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
-        }
-        .contentShape(NotchShape(cornerRadius: cornerRadius))
-        .onHover { hovering in
-            panelState.setHovering(hovering)
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .animation(
-            .spring(response: 0.32, dampingFraction: 0.88),
+            expansionAnimation,
             value: panelState.isExpanded
         )
+        .animation(
+            .spring(response: 0.34, dampingFraction: 0.9),
+            value: isPlaying
+        )
+    }
+
+    private var expansionAnimation: Animation {
+        panelState.isExpanded
+            ? .spring(response: 0.42, dampingFraction: 0.82, blendDuration: 0)
+            : .spring(response: 0.46, dampingFraction: 1, blendDuration: 0)
     }
 
     private var compactContent: some View {
@@ -159,7 +190,7 @@ struct NotchView: View {
     }
 
     private func playbackControls(_ snapshot: MusicSnapshot) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             PlaybackButton(
                 systemName: "backward.fill",
                 label: "上一首",
@@ -181,9 +212,58 @@ struct NotchView: View {
                 accent: accent,
                 action: musicMonitor.nextTrack
             )
+
+            Spacer(minLength: 4)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    showsVolumeSlider.toggle()
+                }
+            } label: {
+                Image(systemName: volumeIcon(snapshot.volume))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.76))
+                    .frame(width: 25, height: 25)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .help("音量")
+            .accessibilityLabel("音量")
+
+            if showsVolumeSlider {
+                Slider(
+                    value: Binding(
+                        get: { snapshot.volume },
+                        set: { musicMonitor.setVolume($0) }
+                    ),
+                    in: 0...1
+                )
+                .controlSize(.mini)
+                .tint(accent)
+                .frame(width: 54)
+                .accessibilityLabel("Apple Music 音量")
+                .transition(
+                    .opacity.combined(
+                        with: .scale(scale: 0.85, anchor: .trailing)
+                    )
+                )
+            }
         }
         .disabled(musicMonitor.isSendingCommand)
         .opacity(musicMonitor.isSendingCommand ? 0.55 : 1)
+    }
+
+    private func volumeIcon(_ volume: Double) -> String {
+        if volume == 0 {
+            return "speaker.slash.fill"
+        }
+        if volume < 0.33 {
+            return "speaker.1.fill"
+        }
+        if volume < 0.66 {
+            return "speaker.2.fill"
+        }
+        return "speaker.3.fill"
     }
 
     private func artworkView(_ artwork: NSImage?, size: CGFloat) -> some View {

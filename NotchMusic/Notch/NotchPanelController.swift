@@ -1,6 +1,4 @@
 import AppKit
-import Combine
-import QuartzCore
 import SwiftUI
 
 final class NotchPanel: NSPanel {
@@ -14,7 +12,6 @@ final class NotchPanelController {
     private let panelState = NotchPanelState()
     private let panel: NotchPanel
     private var metrics: NotchMetrics?
-    private var cancellables = Set<AnyCancellable>()
 
     init(musicMonitor: MusicMonitor) {
         self.musicMonitor = musicMonitor
@@ -54,13 +51,6 @@ final class NotchPanelController {
         panel.contentView = NSHostingView(rootView: rootView)
         panel.contentView?.wantsLayer = true
         panel.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
-
-        panelState.$isExpanded
-            .removeDuplicates()
-            .sink { [weak self] expanded in
-                self?.updateFrame(expanded: expanded, animated: true)
-            }
-            .store(in: &cancellables)
     }
 
     func show() {
@@ -84,38 +74,23 @@ final class NotchPanelController {
         }
 
         self.metrics = metrics
-        updateFrame(expanded: panelState.isExpanded, animated: false)
+        panelState.updateMetrics(
+            notchWidth: metrics.notchWidth,
+            topInset: metrics.topInset
+        )
+        updateWindowFrame(metrics: metrics)
         panel.orderFrontRegardless()
     }
 
-    private func updateFrame(expanded: Bool, animated: Bool) {
-        guard let metrics else { return }
-
-        let width: CGFloat = expanded
-            ? max(340, metrics.notchWidth + 150)
-            : max(230, metrics.notchWidth + 56)
-        let height: CGFloat = expanded
-            ? 188
-            : max(32, metrics.topInset)
-
+    private func updateWindowFrame(metrics: NotchMetrics) {
+        // The panel stays fixed so the SwiftUI spring is the only size animation.
+        let size = NotchLayout.windowSize(notchWidth: metrics.notchWidth)
         let frame = NSRect(
-            x: metrics.screen.frame.midX - width / 2,
-            y: metrics.screen.frame.maxY - height,
-            width: width,
-            height: height
+            x: metrics.screen.frame.midX - size.width / 2,
+            y: metrics.screen.frame.maxY - size.height,
+            width: size.width,
+            height: size.height
         )
-
-        guard animated, panel.isVisible, panel.frame != frame else {
-            panel.setFrame(frame, display: true)
-            return
-        }
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = expanded ? 0.28 : 0.18
-            context.timingFunction = CAMediaTimingFunction(
-                name: expanded ? .easeOut : .easeInEaseOut
-            )
-            panel.animator().setFrame(frame, display: true)
-        }
+        panel.setFrame(frame, display: true)
     }
 }

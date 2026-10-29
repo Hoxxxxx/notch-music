@@ -14,6 +14,8 @@ final class MusicMonitor: ObservableObject {
     private let client = AppleMusicClient()
     private let connectionKey = "NotchMusic.didConnectAppleMusic"
     private var pollTask: Task<Void, Never>?
+    private var volumeTask: Task<Void, Never>?
+    private var pendingVolume: Double?
 
     init() {
         isConnected = UserDefaults.standard.bool(forKey: connectionKey)
@@ -36,6 +38,9 @@ final class MusicMonitor: ObservableObject {
     func disconnect() {
         pollTask?.cancel()
         pollTask = nil
+        volumeTask?.cancel()
+        volumeTask = nil
+        pendingVolume = nil
         isConnected = false
         UserDefaults.standard.set(false, forKey: connectionKey)
         snapshot = nil
@@ -52,6 +57,9 @@ final class MusicMonitor: ObservableObject {
     func stop() {
         pollTask?.cancel()
         pollTask = nil
+        volumeTask?.cancel()
+        volumeTask = nil
+        pendingVolume = nil
     }
 
     func openAppleMusic() {
@@ -87,8 +95,20 @@ final class MusicMonitor: ObservableObject {
     func seek(to position: TimeInterval) {
         guard let snapshot, snapshot.duration > 0 else { return }
         let clamped = min(max(position, 0), snapshot.duration)
-        self.snapshot = snapshot.updatingPosition(clamped)
+        self.snapshot = snapshot.updating(position: clamped)
         perform(.seek(to: clamped))
+    }
+
+    func setVolume(_ volume: Double) {
+        guard isConnected, isMusicRunning, let snapshot else { return }
+        let clamped = min(max(volume, 0), 1)
+        self.snapshot = snapshot.updating(volume: clamped)
+        pendingVolume = clamped
+
+        guard volumeTask == nil else { return }
+        volumeTask = Task {
+            await flushVolumeCommands()
+        }
     }
 
     private func startPolling() {
@@ -131,6 +151,7 @@ final class MusicMonitor: ObservableObject {
                     duration: value.duration,
                     position: value.position,
                     isPlaying: value.isPlaying,
+                    volume: value.volume,
                     artwork: value.artworkData.flatMap(NSImage.init(data:)),
                     sampledAt: Date()
                 )
@@ -163,14 +184,33 @@ final class MusicMonitor: ObservableObject {
             case .success:
                 await refresh()
             case .failure(let error):
-                switch error {
-                case .permissionDenied:
-                    needsPermission = true
-                    errorMessage = nil
-                case .scriptError(let message):
-                    errorMessage = message
-                }
+                handleCommandFailure(error)
             }
+        }
+    }
+
+    private func flushVolumeCommands() async {
+        while !Task.isCancelled, let volume = pendingVolume {
+            pendingVolume = nil
+            let result = await client.send(.setVolume(volume))
+            guard !Task.isCancelled else { return }
+
+            if case .failure(let error) = result {
+                handleCommandFailure(error)
+                break
+            }
+            try? await Task.sleep(nanoseconds: 80_000_000)
+        }
+        volumeTask = nil
+    }
+
+    private func handleCommandFailure(_ error: AppleMusicClientError) {
+        switch error {
+        case .permissionDenied:
+            needsPermission = true
+            errorMessage = nil
+        case .scriptError(let message):
+            errorMessage = message
         }
     }
 

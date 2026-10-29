@@ -9,6 +9,7 @@ struct MusicSnapshot {
     let duration: TimeInterval
     let position: TimeInterval
     let isPlaying: Bool
+    let volume: Double
     let artwork: NSImage?
     let sampledAt: Date
 
@@ -21,15 +22,19 @@ struct MusicSnapshot {
         return min(value, duration)
     }
 
-    func updatingPosition(_ position: TimeInterval) -> MusicSnapshot {
+    func updating(
+        position: TimeInterval? = nil,
+        volume: Double? = nil
+    ) -> MusicSnapshot {
         MusicSnapshot(
             trackID: trackID,
             title: title,
             artist: artist,
             album: album,
             duration: duration,
-            position: min(max(position, 0), duration),
+            position: min(max(position ?? self.position, 0), duration),
             isPlaying: isPlaying,
+            volume: min(max(volume ?? self.volume, 0), 1),
             artwork: artwork,
             sampledAt: Date()
         )
