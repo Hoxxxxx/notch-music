@@ -31,7 +31,8 @@ struct NotchView: View {
                     cornerRadius: cornerRadius,
                     artwork: musicMonitor.snapshot?.artwork,
                     accent: accent,
-                    isExpanded: panelState.isExpanded
+                    isExpanded: panelState.isExpanded,
+                    topInset: panelState.topInset
                 )
 
                 if panelState.isExpanded {
@@ -510,6 +511,7 @@ private struct NotchBackdrop: View {
     let artwork: NSImage?
     let accent: Color
     let isExpanded: Bool
+    let topInset: CGFloat
 
     var body: some View {
         GeometryReader { geometry in
@@ -598,6 +600,24 @@ private struct NotchBackdrop: View {
                             geometry.size.height
                         ) * 0.68
                     )
+                }
+
+                VStack(spacing: 0) {
+                    Color.black
+                        .frame(height: topInset + 1)
+
+                    LinearGradient(
+                        colors: [
+                            .black,
+                            .black.opacity(0.72),
+                            .clear
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 24)
+
+                    Spacer(minLength: 0)
                 }
             }
         }
