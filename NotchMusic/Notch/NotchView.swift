@@ -26,7 +26,7 @@ struct NotchView: View {
         let cornerRadius: CGFloat = panelState.isExpanded ? 22 : 14
 
         VStack(spacing: 0) {
-            ZStack {
+            ZStack(alignment: .topLeading) {
                 NotchBackdrop(
                     cornerRadius: cornerRadius,
                     artwork: musicMonitor.snapshot?.artwork,
@@ -41,6 +41,19 @@ struct NotchView: View {
                 } else if isPlaying {
                     compactContent
                         .transition(.opacity)
+                }
+
+                if let snapshot = musicMonitor.snapshot,
+                   panelState.isExpanded || isPlaying {
+                    let artworkSize: CGFloat = panelState.isExpanded ? 88 : 22
+
+                    artworkView(snapshot.artwork, size: artworkSize)
+                        .offset(
+                            x: panelState.isExpanded ? 16 : 6,
+                            y: panelState.isExpanded
+                                ? 42
+                                : (panelState.topInset - artworkSize) / 2
+                        )
                 }
             }
             .frame(width: size.width, height: size.height)
@@ -83,7 +96,7 @@ struct NotchView: View {
 
     private var compactContent: some View {
         HStack(spacing: 0) {
-            compactArtwork
+            Color.clear
                 .frame(width: 22, height: 22)
 
             Spacer(minLength: 0)
@@ -92,25 +105,6 @@ struct NotchView: View {
         }
         .padding(.horizontal, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var compactArtwork: some View {
-        Group {
-            if let artwork = musicMonitor.snapshot?.artwork {
-                Image(nsImage: artwork)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(Color.white.opacity(0.10))
-                    .overlay {
-                        Image(systemName: "music.note")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.white.opacity(0.62))
-                    }
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 
     @ViewBuilder
@@ -131,7 +125,8 @@ struct NotchView: View {
     private func nowPlaying(_ snapshot: MusicSnapshot) -> some View {
         VStack(spacing: 9) {
             HStack(alignment: .top, spacing: 14) {
-                artworkView(snapshot.artwork, size: 88)
+                Color.clear
+                    .frame(width: 88, height: 88)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(snapshot.title)
@@ -300,9 +295,17 @@ struct NotchView: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: panelState.isExpanded ? 12 : 6,
+                style: .continuous
+            )
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(
+                cornerRadius: panelState.isExpanded ? 12 : 6,
+                style: .continuous
+            )
                 .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
         }
     }
