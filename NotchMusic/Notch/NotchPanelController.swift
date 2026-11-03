@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 final class NotchPanel: NSPanel {
@@ -9,12 +10,34 @@ final class NotchPanel: NSPanel {
 @MainActor
 final class NotchPanelController {
     private let musicMonitor: MusicMonitor
+    private let systemActivityMonitor: SystemActivityMonitor
+    private let audioSpectrumMonitor: AudioSpectrumMonitor
+    private let systemHUDController: SystemHUDController
+    private let deviceConnectionMonitor: DeviceConnectionMonitor
+    private let onOpenSettings: () -> Void
     private let panelState = NotchPanelState()
     private let panel: NotchPanel
+    private let lockScreenIsland = LockScreenIslandController()
     private var metrics: NotchMetrics?
+    private var isScreenLocked: Bool
+    private var screenUnlockTask: Task<Void, Never>?
+    private var cancellables: Set<AnyCancellable> = []
 
-    init(musicMonitor: MusicMonitor) {
+    init(
+        musicMonitor: MusicMonitor,
+        systemActivityMonitor: SystemActivityMonitor,
+        audioSpectrumMonitor: AudioSpectrumMonitor,
+        systemHUDController: SystemHUDController,
+        deviceConnectionMonitor: DeviceConnectionMonitor,
+        onOpenSettings: @escaping () -> Void
+    ) {
         self.musicMonitor = musicMonitor
+        self.systemActivityMonitor = systemActivityMonitor
+        self.audioSpectrumMonitor = audioSpectrumMonitor
+        self.systemHUDController = systemHUDController
+        self.deviceConnectionMonitor = deviceConnectionMonitor
+        self.onOpenSettings = onOpenSettings
+        self.isScreenLocked = systemActivityMonitor.isScreenLocked
 
         let panel = NotchPanel(
             contentRect: .zero,
@@ -46,11 +69,26 @@ final class NotchPanelController {
 
         let rootView = NotchView(
             musicMonitor: musicMonitor,
-            panelState: panelState
+            panelState: panelState,
+            systemActivityMonitor: systemActivityMonitor,
+            audioSpectrumMonitor: audioSpectrumMonitor,
+            systemHUDController: systemHUDController,
+            deviceConnectionMonitor: deviceConnectionMonitor,
+            onOpenSettings: onOpenSettings
         )
         panel.contentView = NSHostingView(rootView: rootView)
         panel.contentView?.wantsLayer = true
         panel.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
+
+        systemActivityMonitor.$isScreenLocked
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isLocked in
+                Task { @MainActor in
+                    self?.screenLockStateDidChange(isLocked)
+                }
+            }
+            .store(in: &cancellables)
     }
 
     func show() {
@@ -58,6 +96,7 @@ final class NotchPanelController {
     }
 
     func screenParametersDidChange() {
+        guard !isScreenLocked else { return }
         refreshScreen()
     }
 
@@ -76,10 +115,38 @@ final class NotchPanelController {
         self.metrics = metrics
         panelState.updateMetrics(
             notchWidth: metrics.notchWidth,
-            topInset: metrics.topInset
+            topInset: metrics.topInset,
+            notchLeading: metrics.notchLeading,
+            notchTrailing: metrics.notchTrailing,
+            screenCenterX: metrics.screenCenterX
         )
         updateWindowFrame(metrics: metrics)
         panel.orderFrontRegardless()
+        if isScreenLocked {
+            _ = lockScreenIsland.enter(panel: panel)
+        }
+    }
+
+    private func screenLockStateDidChange(_ isLocked: Bool) {
+        guard self.isScreenLocked != isLocked else { return }
+
+        self.isScreenLocked = isLocked
+        screenUnlockTask?.cancel()
+        screenUnlockTask = nil
+
+        guard !isLocked else {
+            panelState.collapseForScreenLock()
+            _ = lockScreenIsland.enter(panel: panel)
+            return
+        }
+
+        screenUnlockTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+            self.lockScreenIsland.leave(panel: self.panel)
+            self.panelState.restoreAfterScreenLock()
+        }
     }
 
     private func updateWindowFrame(metrics: NotchMetrics) {

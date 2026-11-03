@@ -28,6 +28,12 @@
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>NotchMusic 需要读取 Apple Music 的当前歌曲，以便在刘海中显示播放信息。</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>NotchMusic 仅在你启用实时音乐频谱时分析 Apple Music 的音频，不会保存或上传音频。</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>NotchMusic 需要读取日历，以便在灵动岛中显示选中日期的日程。</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>NotchMusic 需要读取日历，以便在灵动岛中显示选中日期的日程。</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>

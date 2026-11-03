@@ -18,6 +18,25 @@
 		A10000000000000000000048 /* MusicMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000028 /* MusicMonitor.swift */; };
 		A10000000000000000000049 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000029 /* SettingsView.swift */; };
 		A1000000000000000000004A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* Assets.xcassets */; };
+		A1000000000000000000004B /* WatchFaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002A /* WatchFaceView.swift */; };
+		A1000000000000000000004C /* SystemActivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002B /* SystemActivityMonitor.swift */; };
+		A1000000000000000000004E /* AudioSpectrumMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002C /* AudioSpectrumMonitor.swift */; };
+		A1000000000000000000004F /* SystemHUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002D /* SystemHUDController.swift */; };
+		A10000000000000000000050 /* MediaKeyInterceptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002E /* MediaKeyInterceptor.swift */; };
+		A10000000000000000000051 /* SystemControlBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002F /* SystemControlBackend.swift */; };
+		A10000000000000000000052 /* SystemHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* SystemHUDView.swift */; };
+		A10000000000000000000053 /* MultiAvatarRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000058 /* MultiAvatarRenderer.swift */; };
+		A10000000000000000000054 /* multiavatar.min.js in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000055 /* multiavatar.min.js */; };
+		A10000000000000000000056 /* Multiavatar-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000059 /* Multiavatar-LICENSE.txt */; };
+		A10000000000000000000060 /* fusion-pixel-12px-proportional-zh_hans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000062 /* fusion-pixel-12px-proportional-zh_hans.ttf */; };
+		A10000000000000000000061 /* FusionPixel-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000063 /* FusionPixel-OFL.txt */; };
+		A10000000000000000000065 /* LockScreenIslandController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000064 /* LockScreenIslandController.swift */; };
+		A10000000000000000000066 /* CalendarIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000067 /* CalendarIslandView.swift */; };
+		A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000069 /* DeviceConnectionMonitor.swift */; };
+		A1000000000000000000006A /* AirPodsPro3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006B /* AirPodsPro3DView.swift */; };
+		A1000000000000000000006C /* AirPodsPro.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006D /* AirPodsPro.usdz */; };
+		A1000000000000000000006E /* AirPods.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006F /* AirPods.usdz */; };
+		A10000000000000000000070 /* AirPodsMax.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000071 /* AirPodsMax.usdz */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +53,25 @@
 		A10000000000000000000027 /* AppleMusicClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMusicClient.swift; sourceTree = "<group>"; };
 		A10000000000000000000028 /* MusicMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicMonitor.swift; sourceTree = "<group>"; };
 		A10000000000000000000029 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A1000000000000000000002A /* WatchFaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceView.swift; sourceTree = "<group>"; };
+		A1000000000000000000002B /* SystemActivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemActivityMonitor.swift; sourceTree = "<group>"; };
+		A1000000000000000000002C /* AudioSpectrumMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSpectrumMonitor.swift; sourceTree = "<group>"; };
+		A1000000000000000000002D /* SystemHUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHUDController.swift; sourceTree = "<group>"; };
+		A1000000000000000000002E /* MediaKeyInterceptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeyInterceptor.swift; sourceTree = "<group>"; };
+		A1000000000000000000002F /* SystemControlBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemControlBackend.swift; sourceTree = "<group>"; };
+		A10000000000000000000030 /* SystemHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHUDView.swift; sourceTree = "<group>"; };
+		A10000000000000000000055 /* multiavatar.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = multiavatar.min.js; sourceTree = "<group>"; };
+		A10000000000000000000058 /* MultiAvatarRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiAvatarRenderer.swift; sourceTree = "<group>"; };
+		A10000000000000000000059 /* Multiavatar-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Multiavatar-LICENSE.txt"; sourceTree = "<group>"; };
+		A10000000000000000000062 /* fusion-pixel-12px-proportional-zh_hans.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "fusion-pixel-12px-proportional-zh_hans.ttf"; sourceTree = "<group>"; };
+		A10000000000000000000063 /* FusionPixel-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "FusionPixel-OFL.txt"; sourceTree = "<group>"; };
+		A10000000000000000000064 /* LockScreenIslandController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenIslandController.swift; sourceTree = "<group>"; };
+		A10000000000000000000067 /* CalendarIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarIslandView.swift; sourceTree = "<group>"; };
+		A10000000000000000000069 /* DeviceConnectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConnectionMonitor.swift; sourceTree = "<group>"; };
+		A1000000000000000000006B /* AirPodsPro3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPodsPro3DView.swift; sourceTree = "<group>"; };
+		A1000000000000000000006D /* AirPodsPro.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPodsPro.usdz; sourceTree = "<group>"; };
+		A1000000000000000000006F /* AirPods.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPods.usdz; sourceTree = "<group>"; };
+		A10000000000000000000071 /* AirPodsMax.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPodsMax.usdz; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,7 +107,9 @@
 				A10000000000000000000005 /* App */,
 				A10000000000000000000006 /* Notch */,
 				A10000000000000000000007 /* Music */,
+				A1000000000000000000004D /* System */,
 				A10000000000000000000008 /* Settings */,
+				A10000000000000000000057 /* Resources */,
 				A10000000000000000000015 /* Assets.xcassets */,
 				A10000000000000000000014 /* Info.plist */,
 			);
@@ -92,6 +132,12 @@
 				A10000000000000000000023 /* NotchPanelController.swift */,
 				A10000000000000000000024 /* NotchPanelState.swift */,
 				A10000000000000000000025 /* NotchView.swift */,
+				A10000000000000000000064 /* LockScreenIslandController.swift */,
+				A1000000000000000000002A /* WatchFaceView.swift */,
+				A10000000000000000000058 /* MultiAvatarRenderer.swift */,
+				A10000000000000000000030 /* SystemHUDView.swift */,
+				A10000000000000000000067 /* CalendarIslandView.swift */,
+				A1000000000000000000006B /* AirPodsPro3DView.swift */,
 			);
 			path = Notch;
 			sourceTree = "<group>";
@@ -102,6 +148,7 @@
 				A10000000000000000000026 /* MusicSnapshot.swift */,
 				A10000000000000000000027 /* AppleMusicClient.swift */,
 				A10000000000000000000028 /* MusicMonitor.swift */,
+				A1000000000000000000002C /* AudioSpectrumMonitor.swift */,
 			);
 			path = Music;
 			sourceTree = "<group>";
@@ -112,6 +159,32 @@
 				A10000000000000000000029 /* SettingsView.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		A1000000000000000000004D /* System */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000002B /* SystemActivityMonitor.swift */,
+				A1000000000000000000002D /* SystemHUDController.swift */,
+				A1000000000000000000002E /* MediaKeyInterceptor.swift */,
+				A1000000000000000000002F /* SystemControlBackend.swift */,
+				A10000000000000000000069 /* DeviceConnectionMonitor.swift */,
+			);
+			path = System;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000057 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000055 /* multiavatar.min.js */,
+				A10000000000000000000059 /* Multiavatar-LICENSE.txt */,
+				A10000000000000000000062 /* fusion-pixel-12px-proportional-zh_hans.ttf */,
+				A10000000000000000000063 /* FusionPixel-OFL.txt */,
+				A1000000000000000000006D /* AirPodsPro.usdz */,
+				A1000000000000000000006F /* AirPods.usdz */,
+				A10000000000000000000071 /* AirPodsMax.usdz */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -173,6 +246,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000000000000000000004A /* Assets.xcassets in Resources */,
+				A10000000000000000000054 /* multiavatar.min.js in Resources */,
+				A10000000000000000000056 /* Multiavatar-LICENSE.txt in Resources */,
+				A10000000000000000000060 /* fusion-pixel-12px-proportional-zh_hans.ttf in Resources */,
+				A10000000000000000000061 /* FusionPixel-OFL.txt in Resources */,
+				A1000000000000000000006C /* AirPodsPro.usdz in Resources */,
+				A1000000000000000000006E /* AirPods.usdz in Resources */,
+				A10000000000000000000070 /* AirPodsMax.usdz in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,6 +273,18 @@
 				A10000000000000000000047 /* AppleMusicClient.swift in Sources */,
 				A10000000000000000000048 /* MusicMonitor.swift in Sources */,
 				A10000000000000000000049 /* SettingsView.swift in Sources */,
+				A1000000000000000000004B /* WatchFaceView.swift in Sources */,
+				A1000000000000000000004C /* SystemActivityMonitor.swift in Sources */,
+				A1000000000000000000004E /* AudioSpectrumMonitor.swift in Sources */,
+				A1000000000000000000004F /* SystemHUDController.swift in Sources */,
+				A10000000000000000000050 /* MediaKeyInterceptor.swift in Sources */,
+				A10000000000000000000051 /* SystemControlBackend.swift in Sources */,
+				A10000000000000000000052 /* SystemHUDView.swift in Sources */,
+				A10000000000000000000053 /* MultiAvatarRenderer.swift in Sources */,
+				A10000000000000000000065 /* LockScreenIslandController.swift in Sources */,
+				A10000000000000000000066 /* CalendarIslandView.swift in Sources */,
+				A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */,
+				A1000000000000000000006A /* AirPodsPro3DView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

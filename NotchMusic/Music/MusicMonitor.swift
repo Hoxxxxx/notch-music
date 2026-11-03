@@ -2,9 +2,16 @@ import AppKit
 import Combine
 import Foundation
 
+enum TrackTransitionDirection {
+    case forward
+    case backward
+}
+
 @MainActor
 final class MusicMonitor: ObservableObject {
     @Published private(set) var snapshot: MusicSnapshot?
+    @Published private(set) var trackTransitionDirection:
+        TrackTransitionDirection = .forward
     @Published private(set) var isConnected = false
     @Published private(set) var isMusicRunning = false
     @Published private(set) var needsPermission = false
@@ -16,6 +23,13 @@ final class MusicMonitor: ObservableObject {
     private var pollTask: Task<Void, Never>?
     private var volumeTask: Task<Void, Never>?
     private var pendingVolume: Double?
+    private var stateRevision = 0
+    private var pendingPlaybackState: Bool?
+    private var pendingPlaybackStateDeadline: Date?
+    private var pendingShuffleState: Bool?
+    private var pendingShuffleStateDeadline: Date?
+    private var pendingTrackTransitionDirection: TrackTransitionDirection?
+    private var pendingTrackTransitionDeadline: Date?
 
     init() {
         isConnected = UserDefaults.standard.bool(forKey: connectionKey)
@@ -41,6 +55,12 @@ final class MusicMonitor: ObservableObject {
         volumeTask?.cancel()
         volumeTask = nil
         pendingVolume = nil
+        pendingPlaybackState = nil
+        pendingPlaybackStateDeadline = nil
+        pendingShuffleState = nil
+        pendingShuffleStateDeadline = nil
+        pendingTrackTransitionDirection = nil
+        pendingTrackTransitionDeadline = nil
         isConnected = false
         UserDefaults.standard.set(false, forKey: connectionKey)
         snapshot = nil
@@ -81,14 +101,52 @@ final class MusicMonitor: ObservableObject {
     }
 
     func previousTrack() {
+        guard isConnected, isMusicRunning, !isSendingCommand else { return }
+        pendingTrackTransitionDirection = .backward
+        pendingTrackTransitionDeadline = Date().addingTimeInterval(2)
         perform(.previousTrack)
     }
 
+    func toggleShuffle() {
+        guard isConnected,
+              isMusicRunning,
+              !isSendingCommand,
+              let snapshot else {
+            perform(.toggleShuffle)
+            return
+        }
+
+        let targetState = !snapshot.isShuffleEnabled
+        pendingShuffleState = targetState
+        pendingShuffleStateDeadline = Date().addingTimeInterval(1)
+        self.snapshot = snapshot.updating(isShuffleEnabled: targetState)
+        perform(.toggleShuffle, rollbackSnapshot: snapshot)
+    }
+
     func togglePlayPause() {
-        perform(.togglePlayPause)
+        guard isConnected,
+              isMusicRunning,
+              !isSendingCommand,
+              let snapshot else {
+            perform(.togglePlayPause)
+            return
+        }
+
+        let targetState = !snapshot.isPlaying
+        pendingPlaybackState = targetState
+        pendingPlaybackStateDeadline = Date().addingTimeInterval(1)
+        let currentPosition = snapshot.elapsed(at: Date())
+        self.snapshot = snapshot.updating(
+            position: currentPosition,
+            isPlaying: targetState
+        )
+        perform(.togglePlayPause, rollbackSnapshot: snapshot)
     }
 
     func nextTrack() {
+        guard isConnected, isMusicRunning, !isSendingCommand else { return }
+        pendingTrackTransitionDirection = .forward
+        pendingTrackTransitionDeadline = Date().addingTimeInterval(2)
         perform(.nextTrack)
     }
 
@@ -102,6 +160,7 @@ final class MusicMonitor: ObservableObject {
     func setVolume(_ volume: Double) {
         guard isConnected, isMusicRunning, let snapshot else { return }
         let clamped = min(max(volume, 0), 1)
+        stateRevision &+= 1
         self.snapshot = snapshot.updating(volume: clamped)
         pendingVolume = clamped
 
@@ -123,8 +182,9 @@ final class MusicMonitor: ObservableObject {
         }
     }
 
-    private func refresh() async {
-        guard isConnected else { return }
+    private func refresh(afterTrackChange: Bool = false) async {
+        guard isConnected, !isSendingCommand else { return }
+        let revision = stateRevision
 
         let running = Self.appleMusicIsRunning
         isMusicRunning = running
@@ -135,14 +195,35 @@ final class MusicMonitor: ObservableObject {
             return
         }
 
-        let result = await client.read()
-        guard !Task.isCancelled else { return }
+        let result = afterTrackChange
+            ? await client.readAfterTrackChange()
+            : await client.read()
+        guard !Task.isCancelled,
+              !isSendingCommand,
+              revision == stateRevision else { return }
 
         switch result {
         case .success(let value):
             needsPermission = false
             errorMessage = nil
             if let value {
+                let resolvedPlaybackState = resolvedPlaybackState(
+                    actual: value.isPlaying
+                )
+                let resolvedShuffleState = resolvedShuffleState(
+                    actual: value.isShuffleEnabled
+                )
+                if let currentTrackID = snapshot?.trackID,
+                   currentTrackID != value.trackID {
+                    let deadline = pendingTrackTransitionDeadline
+                    let hasPendingDirection =
+                        deadline.map { $0 >= Date() } == true
+                    trackTransitionDirection = hasPendingDirection
+                        ? pendingTrackTransitionDirection ?? .forward
+                        : .forward
+                    pendingTrackTransitionDirection = nil
+                    pendingTrackTransitionDeadline = nil
+                }
                 snapshot = MusicSnapshot(
                     trackID: value.trackID,
                     title: value.title,
@@ -150,8 +231,9 @@ final class MusicMonitor: ObservableObject {
                     album: value.album,
                     duration: value.duration,
                     position: value.position,
-                    isPlaying: value.isPlaying,
+                    isPlaying: resolvedPlaybackState,
                     volume: value.volume,
+                    isShuffleEnabled: resolvedShuffleState,
                     artwork: value.artworkData.flatMap(NSImage.init(data:)),
                     sampledAt: Date()
                 )
@@ -171,8 +253,12 @@ final class MusicMonitor: ObservableObject {
         }
     }
 
-    private func perform(_ command: AppleMusicCommand) {
+    private func perform(
+        _ command: AppleMusicCommand,
+        rollbackSnapshot: MusicSnapshot? = nil
+    ) {
         guard isConnected, isMusicRunning, !isSendingCommand else { return }
+        stateRevision &+= 1
         isSendingCommand = true
 
         Task {
@@ -182,8 +268,22 @@ final class MusicMonitor: ObservableObject {
 
             switch result {
             case .success:
-                await refresh()
+                switch command {
+                case .previousTrack, .nextTrack:
+                    await refresh(afterTrackChange: true)
+                default:
+                    await refresh()
+                }
             case .failure(let error):
+                pendingTrackTransitionDirection = nil
+                pendingTrackTransitionDeadline = nil
+                if let rollbackSnapshot {
+                    snapshot = rollbackSnapshot
+                    pendingPlaybackState = nil
+                    pendingPlaybackStateDeadline = nil
+                    pendingShuffleState = nil
+                    pendingShuffleStateDeadline = nil
+                }
                 handleCommandFailure(error)
             }
         }
@@ -212,6 +312,32 @@ final class MusicMonitor: ObservableObject {
         case .scriptError(let message):
             errorMessage = message
         }
+    }
+
+    private func resolvedPlaybackState(actual: Bool) -> Bool {
+        guard let pendingPlaybackState else { return actual }
+
+        let expired = Date() >= (pendingPlaybackStateDeadline ?? .distantPast)
+        if actual == pendingPlaybackState || expired {
+            self.pendingPlaybackState = nil
+            pendingPlaybackStateDeadline = nil
+            return actual
+        }
+
+        return pendingPlaybackState
+    }
+
+    private func resolvedShuffleState(actual: Bool) -> Bool {
+        guard let pendingShuffleState else { return actual }
+
+        let expired = Date() >= (pendingShuffleStateDeadline ?? .distantPast)
+        if actual == pendingShuffleState || expired {
+            self.pendingShuffleState = nil
+            pendingShuffleStateDeadline = nil
+            return actual
+        }
+
+        return pendingShuffleState
     }
 
     private static var appleMusicIsRunning: Bool {

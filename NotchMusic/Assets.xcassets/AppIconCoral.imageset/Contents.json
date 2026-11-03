@@ -1,0 +1,18 @@
+{
+  "images": [
+    {
+      "filename": "app-icon-coral-512.png",
+      "idiom": "universal",
+      "scale": "1x"
+    },
+    {
+      "filename": "app-icon-coral-1024.png",
+      "idiom": "universal",
+      "scale": "2x"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

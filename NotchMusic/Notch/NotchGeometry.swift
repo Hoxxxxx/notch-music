@@ -4,20 +4,39 @@ struct NotchMetrics {
     let screen: NSScreen
     let notchWidth: CGFloat
     let topInset: CGFloat
+    let notchLeading: CGFloat
+    let notchTrailing: CGFloat
+    let screenCenterX: CGFloat
 }
 
 enum NotchLayout {
     static let expandedHeight: CGFloat = 188
+    static let expandedTopPadding: CGFloat = 42
+    static let expandedBottomPadding: CGFloat = 14
+    static let expandedHorizontalPadding: CGFloat = 35
+    static let expandedColumnSpacing: CGFloat = 16
+    static let compactArtworkInset: CGFloat = 14
+    static let physicalNotchOutline = "NotchMusic.physicalNotchOutline"
+    static let alwaysExpanded = "NotchMusic.alwaysExpanded"
+    static let expandedContentHeight =
+        expandedHeight - expandedTopPadding - expandedBottomPadding
 
     private static let windowWidthMargin: CGFloat = 32
     private static let windowHeightMargin: CGFloat = 24
 
-    static func compactWidth(notchWidth: CGFloat, isPlaying: Bool) -> CGFloat {
-        isPlaying ? notchWidth + 56 : notchWidth
+    static func compactWidth(
+        notchWidth: CGFloat,
+        wingWidth: CGFloat
+    ) -> CGFloat {
+        notchWidth + max(wingWidth, 0) * 2
     }
 
     static func expandedWidth(notchWidth: CGFloat) -> CGFloat {
-        max(340, notchWidth + 150)
+        max(500, notchWidth + 310)
+    }
+
+    static func sideHUDWidth(notchWidth: CGFloat) -> CGFloat {
+        max(424, notchWidth + 228)
     }
 
     static func windowSize(notchWidth: CGFloat) -> CGSize {
@@ -34,8 +53,10 @@ enum NotchGeometry {
         guard topInset > 0 else { return nil }
 
         var width: CGFloat = 190
-        if let left = screen.auxiliaryTopLeftArea,
-           let right = screen.auxiliaryTopRightArea,
+        let left = screen.auxiliaryTopLeftArea
+        let right = screen.auxiliaryTopRightArea
+
+        if let left, let right,
            left.width > 0,
            right.width > 0,
            right.minX > left.maxX {
@@ -45,7 +66,10 @@ enum NotchGeometry {
         return NotchMetrics(
             screen: screen,
             notchWidth: width,
-            topInset: topInset
+            topInset: topInset,
+            notchLeading: left?.maxX ?? 0,
+            notchTrailing: right?.minX ?? 0,
+            screenCenterX: screen.frame.midX
         )
     }
 
