@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Combine
+import CoreAudio
 import Foundation
 
 enum SystemHUDStyle: String, CaseIterable, Identifiable {
@@ -212,9 +213,13 @@ final class SystemHUDController: ObservableObject {
     private var defaultsObserver: NSObjectProtocol?
     private var hideTask: Task<Void, Never>?
     private var passiveMonitorTask: Task<Void, Never>?
+    private var passiveResumeTask: Task<Void, Never>?
     private var passiveControls = Set<SystemHUDControl>()
     private var lastPassiveStates: [SystemHUDControl: PassiveState] = [:]
+    private var lastVolumeOutputDeviceID: AudioDeviceID?
+    private var ignorePassiveVolumeUntil: TimeInterval = 0
     private var isScreenLocked = false
+    private var ignoresPassiveChanges = false
 
     private struct PassiveState: Equatable {
         let level: Double
@@ -238,6 +243,8 @@ final class SystemHUDController: ObservableObject {
     func stop() {
         hideTask?.cancel()
         hideTask = nil
+        passiveResumeTask?.cancel()
+        passiveResumeTask = nil
         interceptor.stop()
         stopPassiveMonitoring()
         interceptionActive = false
@@ -252,13 +259,23 @@ final class SystemHUDController: ObservableObject {
     func setScreenLocked(_ locked: Bool) {
         guard isScreenLocked != locked else { return }
         isScreenLocked = locked
+        passiveResumeTask?.cancel()
+        passiveResumeTask = nil
 
         if locked {
+            ignoresPassiveChanges = false
             hideTask?.cancel()
             hideTask = nil
             presentation = nil
         } else {
+            ignoresPassiveChanges = true
             refreshPassiveBaselines()
+            passiveResumeTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                guard !Task.isCancelled, let self else { return }
+                self.ignoresPassiveChanges = false
+                self.refreshPassiveBaselines()
+            }
         }
     }
 
@@ -389,6 +406,7 @@ final class SystemHUDController: ObservableObject {
         guard !controls.isEmpty else { return }
 
         refreshPassiveBaselines()
+        lastVolumeOutputDeviceID = backend.volumeOutputDeviceID
 
         passiveMonitorTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -405,10 +423,19 @@ final class SystemHUDController: ObservableObject {
         passiveMonitorTask = nil
         passiveControls.removeAll()
         lastPassiveStates.removeAll()
+        lastVolumeOutputDeviceID = nil
+        ignorePassiveVolumeUntil = 0
         passiveMonitoringActive = false
     }
 
     private func pollPassiveControls() {
+        let now = ProcessInfo.processInfo.systemUptime
+        let outputDeviceID = backend.volumeOutputDeviceID
+        if outputDeviceID != lastVolumeOutputDeviceID {
+            lastVolumeOutputDeviceID = outputDeviceID
+            ignorePassiveVolumeUntil = now + 0.8
+        }
+
         var latestChange: (SystemHUDControl, SystemControlResult)?
 
         for control in SystemHUDControl.allCases
@@ -423,13 +450,16 @@ final class SystemHUDController: ObservableObject {
                 let levelChanged = abs(state.level - previous.level) >= 0.004
                 let muteChanged = state.isMuted != previous.isMuted
                 if levelChanged || muteChanged {
-                    latestChange = (control, result)
+                    if control != .volume || now >= ignorePassiveVolumeUntil {
+                        latestChange = (control, result)
+                    }
                 }
             }
             lastPassiveStates[control] = state
         }
 
         guard !isScreenLocked,
+              !ignoresPassiveChanges,
               let (control, result) = latestChange else {
             return
         }

@@ -20,8 +20,8 @@ enum NotchLayout {
     static let expandedContentHeight =
         expandedHeight - expandedTopPadding - expandedBottomPadding
 
-    private static let windowWidthMargin: CGFloat = 32
-    private static let windowHeightMargin: CGFloat = 24
+    private static let windowWidthMargin: CGFloat = 120
+    private static let windowHeightMargin: CGFloat = 120
 
     static func compactWidth(
         notchWidth: CGFloat,

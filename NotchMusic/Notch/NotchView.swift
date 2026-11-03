@@ -275,9 +275,12 @@ struct NotchView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var suppressedCompactPresentations:
         Set<CompactPresentation> = []
+    @State private var keepsPausedCompactPresentation = false
+    @State private var playbackLingerTask: Task<Void, Never>?
 
     private let expandedArtworkSize: CGFloat = 96
     private let expandedWatchFaceSize = NotchLayout.expandedContentHeight
+    private let compactOuterPadding: CGFloat = 6
 
     private enum CompactPresentation: Hashable {
         case lock
@@ -345,10 +348,6 @@ struct NotchView: View {
                 : usesExpandedLayout
                     ? NotchLayout.expandedHeight
                     : panelState.topInset + hoverPreviewHeight
-        )
-        let compactSideWidth = max(
-            0,
-            (size.width - compactPhysicalNotchWidth) / 2
         )
         let topCornerRadius: CGFloat = usesExpandedLayout
             ? 19
@@ -463,7 +462,7 @@ struct NotchView: View {
                         )
                     } else {
                         expandedPageContent(width: size.width)
-                            .transition(.opacity)
+                            .transition(expandedContentTransition)
                     }
                 } else if showsCompactActivity {
                     compactContent(
@@ -478,7 +477,6 @@ struct NotchView: View {
                    !hasSystemHUD,
                    !systemActivityMonitor.isScreenLocked,
                    usesExpandedLayout || compactPresentation == .playback,
-                   usesExpandedLayout || deviceConnection == nil,
                    !usesExpandedLayout
                     || selectedContentPage == .music
                     || outgoingContentPage == .music {
@@ -507,14 +505,7 @@ struct NotchView: View {
                     .offset(
                         x: panelState.isExpanded
                             ? expandedArtworkOffset.x
-                            : max(
-                                0,
-                                (
-                                    compactSideWidth
-                                        + topCornerRadius
-                                        - artworkSize
-                                ) / 2
-                            ),
+                            : topCornerRadius + compactOuterPadding,
                         y: panelState.isExpanded
                             ? expandedArtworkOffset.y
                             : (size.height - artworkSize) / 2
@@ -569,11 +560,32 @@ struct NotchView: View {
                     bottomCornerRadius: bottomCornerRadius
                 )
             )
-            .shadow(
-                color: usesExpandedLayout ? .black.opacity(0.65) : .clear,
-                radius: 6,
-                y: 2
-            )
+            .background(alignment: .top) {
+                Rectangle()
+                    .fill(Color.clear)
+                    .background(NotchGlassBlurView())
+                    .frame(
+                        width: size.width + 120,
+                        height: size.height + 120
+                    )
+                    .mask {
+                        NotchShape(
+                            topCornerRadius: topCornerRadius,
+                            bottomCornerRadius: bottomCornerRadius
+                        )
+                        .fill(Color.black)
+                        .frame(width: size.width, height: size.height)
+                        .scaleEffect(1.03, anchor: .top)
+                        .blur(radius: 18)
+                        .frame(
+                            width: size.width + 120,
+                            height: size.height + 120,
+                            alignment: .top
+                        )
+                    }
+                    .opacity(usesExpandedLayout ? 1 : 0)
+                    .allowsHitTesting(false)
+            }
             .overlay {
                 NotchShape(
                     topCornerRadius: topCornerRadius,
@@ -630,10 +642,6 @@ struct NotchView: View {
             value: systemHUDController.presentation
         )
         .animation(
-            systemActivityAnimation,
-            value: deviceConnectionMonitor.presentation != nil
-        )
-        .animation(
             compactPresentationAnimation,
             value: compactPresentation
         )
@@ -648,8 +656,35 @@ struct NotchView: View {
         .onChange(of: activeCompactPresentations) { _, presentations in
             suppressedCompactPresentations.formIntersection(presentations)
         }
-        .onChange(of: systemActivityMonitor.isScreenLocked) { _, _ in
+        .onChange(of: systemActivityMonitor.isScreenLocked) { _, isLocked in
             suppressedCompactPresentations.removeAll()
+            guard !isLocked else { return }
+            suppressedCompactPresentations.formUnion(
+                compactSystemActivities
+                    .filter {
+                        $0.id != "screenState"
+                            && $0.id != "microphone"
+                    }
+                    .map { .activity($0.id) }
+            )
+        }
+        .onChange(of: musicMonitor.snapshot?.isPlaying) { wasPlaying, isPlaying in
+            guard isPlaying == false, wasPlaying == true else {
+                if isPlaying == true {
+                    playbackLingerTask?.cancel()
+                    playbackLingerTask = nil
+                    keepsPausedCompactPresentation = false
+                }
+                return
+            }
+
+            playbackLingerTask?.cancel()
+            keepsPausedCompactPresentation = true
+            playbackLingerTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                guard !Task.isCancelled else { return }
+                keepsPausedCompactPresentation = false
+            }
         }
     }
 
@@ -661,7 +696,7 @@ struct NotchView: View {
         // Collapsing must not overshoot: an underdamped spring dips the panel
         // below the physical notch height while shrinking back.
         return panelState.isExpanded
-            ? .spring(response: 0.48, dampingFraction: 0.86, blendDuration: 0)
+            ? .spring(response: 0.52, dampingFraction: 0.82, blendDuration: 0)
             : .spring(response: 0.42, dampingFraction: 1.0, blendDuration: 0)
     }
 
@@ -687,6 +722,38 @@ struct NotchView: View {
         )
     }
 
+    private var expandedContentTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+
+        return .asymmetric(
+            insertion: AnyTransition.modifier(
+                active: NotchBlurTransitionModifier(radius: 7),
+                identity: NotchBlurTransitionModifier(radius: 0)
+            )
+            .combined(with: .opacity)
+            .combined(with: .scale(scale: 1.035, anchor: .top)),
+            removal: .opacity.combined(
+                with: .scale(scale: 0.985, anchor: .top)
+            )
+        )
+    }
+
+    private var compactSceneTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+
+        return .asymmetric(
+            insertion: AnyTransition.modifier(
+                active: NotchBlurTransitionModifier(radius: 2),
+                identity: NotchBlurTransitionModifier(radius: 0)
+            )
+            .combined(with: .opacity)
+            .combined(with: .scale(scale: 0.74, anchor: .center)),
+            removal: .opacity.combined(
+                with: .scale(scale: 0.86, anchor: .center)
+            )
+        )
+    }
+
     private var compactPresentationAnimation: Animation {
         guard let presentation = compactPresentation else {
             return systemActivityAnimation
@@ -708,7 +775,7 @@ struct NotchView: View {
         }
 
         return panelState.isExpanded
-            ? .spring(response: 0.48, dampingFraction: 0.86, blendDuration: 0)
+            ? .spring(response: 0.52, dampingFraction: 0.82, blendDuration: 0)
             : .spring(response: 0.30, dampingFraction: 1.0, blendDuration: 0)
     }
 
@@ -809,6 +876,7 @@ struct NotchView: View {
                 case .lock, .unlock:
                     if let activity = compactScreenStateActivity {
                         compactActivityIcon(activity)
+                            .transition(compactSceneTransition)
                     }
                 case .device:
                     if let deviceConnection {
@@ -816,22 +884,21 @@ struct NotchView: View {
                             model: deviceConnection.model,
                             size: 30
                         )
-                            .transition(
-                                .scale(scale: 0.72, anchor: .center)
-                                    .combined(with: .opacity)
-                            )
+                            .transition(compactSceneTransition)
                     }
                 case .activity(let id):
                     if let activity = compactSystemActivities.first(
                         where: { $0.id == id }
                     ) {
                         compactActivityIcon(activity)
+                            .transition(compactSceneTransition)
                     }
                 case .playback, nil:
                     Color.clear
                 }
             }
-            .frame(width: innerWingWidth, alignment: .center)
+            .padding(.leading, compactOuterPadding)
+            .frame(width: innerWingWidth, alignment: .leading)
             .padding(.leading, cornerInset)
 
             Color.clear
@@ -849,10 +916,7 @@ struct NotchView: View {
                         .accessibilityValue(
                             deviceConnectionVolumeText(deviceConnection)
                         )
-                        .transition(
-                            .scale(scale: 0.72, anchor: .center)
-                                .combined(with: .opacity)
-                        )
+                        .transition(compactSceneTransition)
                     }
                 case .activity(let id):
                     if let activity = compactSystemActivities.first(
@@ -869,6 +933,7 @@ struct NotchView: View {
                             .foregroundStyle(activity.tint)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
+                            .transition(compactSceneTransition)
                     }
                 case .playback:
                     CompactPlaybackIndicator(
@@ -879,7 +944,8 @@ struct NotchView: View {
                     Color.clear
                 }
             }
-            .frame(width: innerWingWidth, alignment: .center)
+            .padding(.trailing, compactOuterPadding)
+            .frame(width: innerWingWidth, alignment: .trailing)
             .padding(.trailing, cornerInset)
         }
         .frame(maxHeight: .infinity)
@@ -1270,7 +1336,11 @@ struct NotchView: View {
         ) {
             return presentation
         }
-        return musicMonitor.snapshot?.isPlaying == true ? .playback : nil
+        if musicMonitor.snapshot?.isPlaying == true
+            || keepsPausedCompactPresentation {
+            return .playback
+        }
+        return nil
     }
 
     private var suppressibleCompactPresentation: CompactPresentation? {
@@ -3910,6 +3980,19 @@ private struct ProceduralNotchBackground: View {
     }
 }
 
+private struct NotchBlurTransitionModifier: ViewModifier, Animatable {
+    var radius: CGFloat
+
+    var animatableData: CGFloat {
+        get { radius }
+        set { radius = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        content.blur(radius: radius)
+    }
+}
+
 private struct NotchShape: Shape {
     var topCornerRadius: CGFloat
     var bottomCornerRadius: CGFloat
@@ -3983,6 +4066,29 @@ private struct NotchShape: Shape {
         path.closeSubpath()
         return path
     }
+}
+
+private struct NotchGlassBlurView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = true
+        view.layerUsesCoreImageFilters = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+        view.layer?.isOpaque = false
+
+        if let blurFilter = CIFilter(name: "CIGaussianBlur") {
+            blurFilter.setDefaults()
+            blurFilter.setValue(28, forKey: kCIInputRadiusKey)
+            view.layer?.backgroundFilters = [blurFilter]
+        }
+
+        return view
+    }
+
+    func updateNSView(
+        _ nsView: NSView,
+        context: Context
+    ) {}
 }
 
 private struct CompactSystemActivity: Identifiable {

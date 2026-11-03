@@ -23,6 +23,10 @@ final class SystemControlBackend {
         )
     }
 
+    var volumeOutputDeviceID: AudioDeviceID? {
+        audio.outputDeviceID
+    }
+
     func perform(
         _ control: SystemHUDControl,
         action: MediaKeyAction,
@@ -72,6 +76,10 @@ private final class SystemAudioControl {
     var isAvailable: Bool {
         guard let device = defaultOutputDevice() else { return false }
         return volumeControl(for: device) != nil
+    }
+
+    var outputDeviceID: AudioDeviceID? {
+        defaultOutputDevice()
     }
 
     var currentState: SystemControlResult? {
