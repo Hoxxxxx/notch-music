@@ -273,9 +273,19 @@ struct NotchView: View {
     @AppStorage(NotchLayout.physicalNotchOutline)
     private var showsPhysicalNotchOutline = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var suppressedCompactPresentations:
+        Set<CompactPresentation> = []
 
     private let expandedArtworkSize: CGFloat = 96
     private let expandedWatchFaceSize = NotchLayout.expandedContentHeight
+
+    private enum CompactPresentation: Hashable {
+        case lock
+        case unlock
+        case device
+        case activity(String)
+        case playback
+    }
 
     private var accent: Color {
         Color(nsColor: musicMonitor.snapshot?.accentColor ?? ArtworkPalette.fallback)
@@ -299,11 +309,11 @@ struct NotchView: View {
     var body: some View {
         let isPlaying = musicMonitor.snapshot?.isPlaying == true
         let deviceConnection = deviceConnectionMonitor.presentation
-        let showsCompactActivity =
-            isPlaying || hasSystemActivityIndicator || deviceConnection != nil
-        let systemHUDPresentation = deviceConnection == nil
-            ? systemHUDController.presentation
-            : nil
+        let showsCompactActivity = compactPresentation != nil
+        let systemHUDPresentation =
+            deviceConnection == nil && !systemActivityMonitor.isScreenLocked
+                ? systemHUDController.presentation
+                : nil
         let showsNotchSideHUD = systemHUDPresentation != nil
             && selectedSystemHUDStyle == .island
         let showsExpandedHUD = systemHUDPresentation != nil
@@ -335,6 +345,10 @@ struct NotchView: View {
                 : usesExpandedLayout
                     ? NotchLayout.expandedHeight
                     : panelState.topInset + hoverPreviewHeight
+        )
+        let compactSideWidth = max(
+            0,
+            (size.width - compactPhysicalNotchWidth) / 2
         )
         let topCornerRadius: CGFloat = usesExpandedLayout
             ? 19
@@ -453,16 +467,17 @@ struct NotchView: View {
                     }
                 } else if showsCompactActivity {
                     compactContent(
-                        isPlaying: isPlaying,
                         deviceConnection: deviceConnection,
-                        width: size.width
+                        width: size.width,
+                        cornerInset: topCornerRadius
                     )
                         .transition(.opacity)
                 }
 
                 if let snapshot = musicMonitor.snapshot,
                    !hasSystemHUD,
-                   usesExpandedLayout || isPlaying,
+                   !systemActivityMonitor.isScreenLocked,
+                   usesExpandedLayout || compactPresentation == .playback,
                    usesExpandedLayout || deviceConnection == nil,
                    !usesExpandedLayout
                     || selectedContentPage == .music
@@ -495,7 +510,7 @@ struct NotchView: View {
                             : max(
                                 0,
                                 (
-                                    compactWingWidth
+                                    compactSideWidth
                                         + topCornerRadius
                                         - artworkSize
                                 ) / 2
@@ -578,13 +593,17 @@ struct NotchView: View {
                 )
             )
             .onHover { hovering in
+                guard !systemActivityMonitor.isScreenLocked else { return }
                 panelState.setHovering(hovering)
             }
             .gesture(
                 TapGesture().onEnded {
                     panelState.expand()
                 },
-                including: usesExpandedLayout ? .none : .all
+                including: usesExpandedLayout
+                    || systemActivityMonitor.isScreenLocked
+                    ? .none
+                    : .all
             )
 
             Spacer(minLength: 0)
@@ -614,6 +633,24 @@ struct NotchView: View {
             systemActivityAnimation,
             value: deviceConnectionMonitor.presentation != nil
         )
+        .animation(
+            compactPresentationAnimation,
+            value: compactPresentation
+        )
+        .task(id: suppressibleCompactPresentation) {
+            guard let presentation = suppressibleCompactPresentation else {
+                return
+            }
+            try? await Task.sleep(nanoseconds: 2_400_000_000)
+            guard !Task.isCancelled else { return }
+            suppressedCompactPresentations.insert(presentation)
+        }
+        .onChange(of: activeCompactPresentations) { _, presentations in
+            suppressedCompactPresentations.formIntersection(presentations)
+        }
+        .onChange(of: systemActivityMonitor.isScreenLocked) { _, _ in
+            suppressedCompactPresentations.removeAll()
+        }
     }
 
     private var expansionAnimation: Animation {
@@ -637,6 +674,29 @@ struct NotchView: View {
             dampingFraction: 0.92,
             blendDuration: 0.08
         )
+    }
+
+    private var compactCarouselAnimation: Animation {
+        if reduceMotion {
+            return .easeOut(duration: 0.18)
+        }
+        return .spring(
+            response: 0.32,
+            dampingFraction: 0.64,
+            blendDuration: 0.04
+        )
+    }
+
+    private var compactPresentationAnimation: Animation {
+        guard let presentation = compactPresentation else {
+            return systemActivityAnimation
+        }
+        switch presentation {
+        case .unlock, .device, .activity:
+            return compactCarouselAnimation
+        case .lock, .playback:
+            return systemActivityAnimation
+        }
     }
 
     /// The artwork travels a much larger relative distance than the panel, so
@@ -718,7 +778,7 @@ struct NotchView: View {
             .stroke(
                 Color.white.opacity(0.85),
                 style: StrokeStyle(
-                    lineWidth: 1.5
+                    lineWidth: 0.75
                 )
             )
             .frame(
@@ -733,62 +793,72 @@ struct NotchView: View {
     }
 
     private func compactContent(
-        isPlaying: Bool,
         deviceConnection: DeviceConnectionPresentation?,
-        width: CGFloat
+        width: CGFloat,
+        cornerInset: CGFloat
     ) -> some View {
-        let wingWidth = max(0, (width - panelState.notchWidth) / 2)
-        let edgePadding = isScreenStateIconOnly
-            ? 9
-            : NotchLayout.compactArtworkInset
+        let wingWidth = max(
+            0,
+            (width - compactPhysicalNotchWidth) / 2
+        )
+        let innerWingWidth = max(0, wingWidth - cornerInset)
 
         return HStack(spacing: 0) {
             Group {
-                if let deviceConnection {
-                    AirPodsStatusIcon(
-                        model: deviceConnection.model,
-                        size: 30
-                    )
+                switch compactPresentation {
+                case .lock, .unlock:
+                    if let activity = compactScreenStateActivity {
+                        compactActivityIcon(activity)
+                    }
+                case .device:
+                    if let deviceConnection {
+                        AirPodsStatusIcon(
+                            model: deviceConnection.model,
+                            size: 30
+                        )
+                            .transition(
+                                .scale(scale: 0.72, anchor: .center)
+                                    .combined(with: .opacity)
+                            )
+                    }
+                case .activity(let id):
+                    if let activity = compactSystemActivities.first(
+                        where: { $0.id == id }
+                    ) {
+                        compactActivityIcon(activity)
+                    }
+                case .playback, nil:
+                    Color.clear
+                }
+            }
+            .frame(width: innerWingWidth, alignment: .center)
+            .padding(.leading, cornerInset)
+
+            Color.clear
+                .frame(width: compactPhysicalNotchWidth)
+
+            HStack(spacing: 5) {
+                switch compactPresentation {
+                case .device:
+                    if let deviceConnection {
+                        CompactVolumeRing(
+                            level: deviceConnectionVolumeLevel(deviceConnection)
+                        )
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("AirPods 音量")
+                        .accessibilityValue(
+                            deviceConnectionVolumeText(deviceConnection)
+                        )
                         .transition(
                             .scale(scale: 0.72, anchor: .center)
                                 .combined(with: .opacity)
                         )
-                } else {
-                    HStack(spacing: 4) {
-                        ForEach(compactSystemActivities) { activity in
-                            compactActivityIcon(activity)
-                        }
                     }
-                }
-            }
-            .padding(.leading, isPlaying
-                ? (deviceConnection == nil
-                    ? NotchLayout.compactArtworkInset + 22 + 6
-                    : edgePadding)
-                : edgePadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(width: wingWidth)
-
-            Color.clear
-                .frame(width: panelState.notchWidth)
-
-            HStack(spacing: 5) {
-                if let deviceConnection {
-                    CompactVolumeRing(
-                        level: deviceConnectionVolumeLevel(deviceConnection)
-                    )
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("AirPods 音量")
-                    .accessibilityValue(
-                        deviceConnectionVolumeText(deviceConnection)
-                    )
-                    .transition(
-                        .scale(scale: 0.72, anchor: .center)
-                            .combined(with: .opacity)
-                    )
-                } else {
-                    if compactSystemActivities.count > 1 {
-                        Text(compactAggregateSummary)
+                case .activity(let id):
+                    if let activity = compactSystemActivities.first(
+                        where: { $0.id == id }
+                    ), let name = activity.name {
+                        Text(name)
                             .font(
                                 .system(
                                     size: 10.5,
@@ -796,45 +866,47 @@ struct NotchView: View {
                                     design: .rounded
                                 )
                             )
-                            .foregroundStyle(.white.opacity(0.78))
+                            .foregroundStyle(activity.tint)
                             .lineLimit(1)
                             .minimumScaleFactor(0.72)
-                    } else {
-                        ForEach(compactSystemActivities) { activity in
-                            if let name = activity.name {
-                                Text(name)
-                                    .font(
-                                        .system(
-                                            size: 10.5,
-                                            weight: .semibold,
-                                            design: .rounded
-                                        )
-                                    )
-                                    .foregroundStyle(activity.tint)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.72)
-                            }
-                        }
                     }
-
-                    if isPlaying {
-                        CompactPlaybackIndicator(
-                            color: bottomBackground,
-                            levels: audioSpectrumMonitor.levels
-                        )
-                    }
+                case .playback:
+                    CompactPlaybackIndicator(
+                        color: bottomBackground,
+                        levels: audioSpectrumMonitor.levels
+                    )
+                case .lock, .unlock, nil:
+                    Color.clear
                 }
             }
-            .padding(.trailing, edgePadding)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .frame(width: wingWidth)
+            .frame(width: innerWingWidth, alignment: .center)
+            .padding(.trailing, cornerInset)
         }
         .frame(maxHeight: .infinity)
-        .help(
-            deviceConnection.map {
+        .help(compactHelpText(deviceConnection: deviceConnection))
+    }
+
+    private func compactHelpText(
+        deviceConnection: DeviceConnectionPresentation?
+    ) -> String {
+        switch compactPresentation {
+        case .lock:
+            return "屏幕已锁定"
+        case .unlock:
+            return "屏幕已解锁"
+        case .device:
+            return deviceConnection.map {
                 "\($0.deviceName) 已连接"
-            } ?? compactSystemActivityDetails
-        )
+            } ?? ""
+        case .activity(let id):
+            return compactSystemActivities.first {
+                $0.id == id
+            }?.accessibilityLabel ?? ""
+        case .playback:
+            return "正在播放"
+        case nil:
+            return ""
+        }
     }
 
     private func deviceConnectionVolumeText(
@@ -855,42 +927,6 @@ struct NotchView: View {
             return 0
         }
         return min(max(volume, 0), 1)
-    }
-
-    private var compactAggregateSummary: String {
-        let activities = compactSystemActivities
-        let names = activities
-            .prefix(2)
-            .map(compactSystemActivityName)
-            .joined(separator: " · ")
-
-        guard activities.count > 2 else { return names }
-        return "\(names) +\(activities.count - 2)"
-    }
-
-    private var compactSystemActivityDetails: String {
-        compactSystemActivities
-            .map(\.accessibilityLabel)
-            .joined(separator: " · ")
-    }
-
-    private func compactSystemActivityName(
-        _ activity: CompactSystemActivity
-    ) -> String {
-        switch activity.id {
-        case "focus":
-            let focusName = systemActivityMonitor.focusName
-            if showsFocusLabel && !focusName.isEmpty {
-                return focusName
-            }
-            return "专注"
-        case "capsLock":
-            return "Caps"
-        case "screenRecording":
-            return "录制"
-        default:
-            return activity.name ?? activity.accessibilityLabel
-        }
     }
 
     private var compactFocusText: String {
@@ -922,7 +958,7 @@ struct NotchView: View {
         var activities: [CompactSystemActivity] = []
 
         if systemActivityMonitor.isScreenLocked {
-            activities.append(
+            return [
                 CompactSystemActivity(
                     id: "screenState",
                     icon: "lock.fill",
@@ -930,7 +966,7 @@ struct NotchView: View {
                     tint: Color.white.opacity(0.88),
                     accessibilityLabel: "屏幕已锁定"
                 )
-            )
+            ]
         } else if systemActivityMonitor.showsUnlockConfirmation {
             activities.append(
                 CompactSystemActivity(
@@ -1204,44 +1240,77 @@ struct NotchView: View {
         return count
     }
 
-    private var compactWingWidth: CGFloat {
-        let activities = compactSystemActivities
-        let isPlaying = musicMonitor.snapshot?.isPlaying == true
+    private var activeCompactPresentations: [CompactPresentation] {
+        guard !systemActivityMonitor.isScreenLocked else { return [] }
 
+        var presentations: [CompactPresentation] = []
+        if systemActivityMonitor.showsUnlockConfirmation {
+            presentations.append(.unlock)
+        }
         if deviceConnectionMonitor.presentation != nil {
-            let leftContent: CGFloat = 30
-            let rightContent: CGFloat = 20
-            return max(leftContent, rightContent) + 18
+            presentations.append(.device)
         }
+        presentations.append(
+            contentsOf: compactSystemActivities
+                .filter {
+                    $0.id != "screenState"
+                        && $0.id != "microphone"
+                }
+                .map { .activity($0.id) }
+        )
+        return presentations
+    }
 
-        // Idle keeps the panel exactly as wide as the physical notch.
-        guard isPlaying || !activities.isEmpty else { return 0 }
-
-        let iconsWidth =
-            CGFloat(activities.count) * 16
-            + CGFloat(activities.count - 1) * 4
-        let leftContent = iconsWidth + (isPlaying ? 22 + 4 : 0)
-
-        let labels = activities.compactMap(\.name)
-        let labelsWidth = labels.reduce(0) { result, label in
-            result + compactLabelWidth(label)
+    private var compactPresentation: CompactPresentation? {
+        if systemActivityMonitor.isScreenLocked {
+            return .lock
         }
-        let playbackWidth: CGFloat = isPlaying ? 5 + 13 : 0
-        let rightContent = labelsWidth + playbackWidth
+        if let presentation = activeCompactPresentations.first(
+            where: { !suppressedCompactPresentations.contains($0) }
+        ) {
+            return presentation
+        }
+        return musicMonitor.snapshot?.isPlaying == true ? .playback : nil
+    }
 
-        let content = max(leftContent, rightContent)
-        if isScreenStateIconOnly {
+    private var suppressibleCompactPresentation: CompactPresentation? {
+        guard compactPresentation != .lock,
+              compactPresentation != .playback else {
+            return nil
+        }
+        return compactPresentation
+    }
+
+    private var compactScreenStateActivity: CompactSystemActivity? {
+        compactSystemActivities.first { $0.id == "screenState" }
+    }
+
+    private var compactPhysicalNotchWidth: CGFloat {
+        let measured = panelState.notchTrailing - panelState.notchLeading
+        return measured > 0 ? measured : panelState.notchWidth
+    }
+
+    private var compactWingWidth: CGFloat {
+        guard let presentation = compactPresentation else { return 0 }
+
+        switch presentation {
+        case .lock, .unlock:
             return 34
+        case .device:
+            return 48
+        case .activity(let id):
+            let label = compactSystemActivities.first {
+                $0.id == id
+            }?.name
+            let labelWidth = label.map(compactLabelWidth) ?? 0
+            return min(max(16, labelWidth) + 16, 170)
+        case .playback:
+            return 38
         }
-        return min(content + 16, 170)
     }
 
     private var isScreenStateIconOnly: Bool {
-        let activities = compactSystemActivities
-        return deviceConnectionMonitor.presentation == nil
-            && musicMonitor.snapshot?.isPlaying != true
-            && activities.count == 1
-            && activities.first?.id == "screenState"
+        compactPresentation == .lock || compactPresentation == .unlock
     }
 
     private func compactLabelWidth(_ text: String) -> CGFloat {

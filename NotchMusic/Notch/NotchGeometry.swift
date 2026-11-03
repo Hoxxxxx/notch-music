@@ -15,7 +15,6 @@ enum NotchLayout {
     static let expandedBottomPadding: CGFloat = 14
     static let expandedHorizontalPadding: CGFloat = 35
     static let expandedColumnSpacing: CGFloat = 16
-    static let compactArtworkInset: CGFloat = 14
     static let physicalNotchOutline = "NotchMusic.physicalNotchOutline"
     static let alwaysExpanded = "NotchMusic.alwaysExpanded"
     static let expandedContentHeight =

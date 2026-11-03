@@ -113,6 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         observeMenuBarIconChanges()
         observeApplicationIconChanges()
         observePlaybackForSpectrum()
+        observeScreenLockForHUD()
         systemHUDController.start()
         deviceConnectionMonitor.start()
 
@@ -253,6 +254,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .removeDuplicates()
             .sink { [weak self] isPlaying in
                 self?.audioSpectrumMonitor.setPlaybackActive(isPlaying)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func observeScreenLockForHUD() {
+        systemHUDController.setScreenLocked(
+            systemActivityMonitor.isScreenLocked
+        )
+        systemActivityMonitor.$isScreenLocked
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isLocked in
+                self?.systemHUDController.setScreenLocked(isLocked)
             }
             .store(in: &cancellables)
     }

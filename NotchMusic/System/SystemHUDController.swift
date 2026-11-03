@@ -214,6 +214,7 @@ final class SystemHUDController: ObservableObject {
     private var passiveMonitorTask: Task<Void, Never>?
     private var passiveControls = Set<SystemHUDControl>()
     private var lastPassiveStates: [SystemHUDControl: PassiveState] = [:]
+    private var isScreenLocked = false
 
     private struct PassiveState: Equatable {
         let level: Double
@@ -245,6 +246,19 @@ final class SystemHUDController: ObservableObject {
         if let defaultsObserver {
             NotificationCenter.default.removeObserver(defaultsObserver)
             self.defaultsObserver = nil
+        }
+    }
+
+    func setScreenLocked(_ locked: Bool) {
+        guard isScreenLocked != locked else { return }
+        isScreenLocked = locked
+
+        if locked {
+            hideTask?.cancel()
+            hideTask = nil
+            presentation = nil
+        } else {
+            refreshPassiveBaselines()
         }
     }
 
@@ -320,6 +334,7 @@ final class SystemHUDController: ObservableObject {
 
     private func handle(_ event: MediaKeyEvent) {
         guard event.phase == .down else { return }
+        guard !isScreenLocked else { return }
 
         let defaults = UserDefaults.standard
         let fine = event.isFineAdjustment
@@ -373,14 +388,7 @@ final class SystemHUDController: ObservableObject {
         passiveControls = controls
         guard !controls.isEmpty else { return }
 
-        for control in controls {
-            if let state = backend.currentState(control) {
-                lastPassiveStates[control] = PassiveState(
-                    level: state.level,
-                    isMuted: state.isMuted
-                )
-            }
-        }
+        refreshPassiveBaselines()
 
         passiveMonitorTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -421,7 +429,10 @@ final class SystemHUDController: ObservableObject {
             lastPassiveStates[control] = state
         }
 
-        guard let (control, result) = latestChange else { return }
+        guard !isScreenLocked,
+              let (control, result) = latestChange else {
+            return
+        }
         presentation = SystemHUDPresentation(
             control: control,
             level: result.level,
@@ -429,5 +440,15 @@ final class SystemHUDController: ObservableObject {
             isFineAdjustment: false
         )
         scheduleHide()
+    }
+
+    private func refreshPassiveBaselines() {
+        for control in passiveControls {
+            guard let state = backend.currentState(control) else { continue }
+            lastPassiveStates[control] = PassiveState(
+                level: state.level,
+                isMuted: state.isMuted
+            )
+        }
     }
 }

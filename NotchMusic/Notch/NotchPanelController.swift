@@ -123,6 +123,7 @@ final class NotchPanelController {
         updateWindowFrame(metrics: metrics)
         panel.orderFrontRegardless()
         if isScreenLocked {
+            panel.ignoresMouseEvents = true
             _ = lockScreenIsland.enter(panel: panel)
         }
     }
@@ -135,6 +136,7 @@ final class NotchPanelController {
         screenUnlockTask = nil
 
         guard !isLocked else {
+            panel.ignoresMouseEvents = true
             panelState.collapseForScreenLock()
             _ = lockScreenIsland.enter(panel: panel)
             return
@@ -145,6 +147,7 @@ final class NotchPanelController {
             guard !Task.isCancelled else { return }
             guard let self else { return }
             self.lockScreenIsland.leave(panel: self.panel)
+            self.panel.ignoresMouseEvents = false
             self.panelState.restoreAfterScreenLock()
         }
     }
