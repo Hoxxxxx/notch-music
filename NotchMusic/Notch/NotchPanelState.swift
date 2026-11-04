@@ -11,7 +11,7 @@ final class NotchPanelState: ObservableObject {
     @Published private(set) var notchTrailing: CGFloat = 0
     @Published private(set) var screenCenterX: CGFloat = 0
 
-    private var isHovering = false
+    @Published private(set) var isHovering = false
     private var isPinnedExpanded: Bool
     private var restoresExpandedAfterScreenLock = false
     private var hoverTask: Task<Void, Never>?

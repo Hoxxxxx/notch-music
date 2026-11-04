@@ -333,7 +333,7 @@ struct NotchView: View {
                 && !usesExpandedLayout
                 && !showsNotchSideHUD
         let hoverPreviewWidth: CGFloat = showsHoverPreview ? 18 : 0
-        let hoverPreviewHeight: CGFloat = showsHoverPreview ? 6 : 0
+        let hoverPreviewHeight: CGFloat = showsHoverPreview ? 4 : 0
         let size = CGSize(
             width: showsNotchSideHUD
                 ? NotchLayout.sideHUDWidth(notchWidth: panelState.notchWidth)
@@ -463,6 +463,10 @@ struct NotchView: View {
                     } else {
                         expandedPageContent(width: size.width)
                             .transition(expandedContentTransition)
+                            .animation(
+                                contentRevealAnimation,
+                                value: panelState.isExpanded
+                            )
                     }
                 } else if showsCompactActivity {
                     compactContent(
@@ -498,6 +502,10 @@ struct NotchView: View {
                     }
                     .frame(width: artworkSize, height: artworkSize)
                     .clipped()
+                    .scaleEffect(
+                        isPlaying || reduceMotion ? 1 : 0.95,
+                        anchor: .center
+                    )
                     .hoverParallax(
                         size: artworkSize,
                         isEnabled: usesExpandedLayout
@@ -560,32 +568,27 @@ struct NotchView: View {
                     bottomCornerRadius: bottomCornerRadius
                 )
             )
-            .background(alignment: .top) {
-                Rectangle()
-                    .fill(Color.clear)
-                    .background(NotchGlassBlurView())
-                    .frame(
-                        width: size.width + 120,
-                        height: size.height + 120
-                    )
-                    .mask {
-                        NotchShape(
-                            topCornerRadius: topCornerRadius,
-                            bottomCornerRadius: bottomCornerRadius
-                        )
-                        .fill(Color.black)
-                        .frame(width: size.width, height: size.height)
-                        .scaleEffect(1.03, anchor: .top)
-                        .blur(radius: 18)
-                        .frame(
-                            width: size.width + 120,
-                            height: size.height + 120,
-                            alignment: .top
-                        )
-                    }
-                    .opacity(usesExpandedLayout ? 1 : 0)
-                    .allowsHitTesting(false)
+            .background {
+                NotchShape(
+                    topCornerRadius: topCornerRadius,
+                    bottomCornerRadius: bottomCornerRadius
+                )
+                .fill(Color.black.opacity(0.30))
+                .frame(width: size.width, height: size.height)
+                .blur(radius: 16)
+                .offset(y: 2)
+                .opacity(
+                    panelState.isHovering || panelState.isExpanded ? 1 : 0
+                )
+                .allowsHitTesting(false)
             }
+            .shadow(
+                color: .black.opacity(
+                    panelState.isHovering || panelState.isExpanded ? 0.70 : 0
+                ),
+                radius: 20,
+                y: 2
+            )
             .overlay {
                 NotchShape(
                     topCornerRadius: topCornerRadius,
@@ -624,6 +627,10 @@ struct NotchView: View {
         .animation(
             .spring(response: 0.24, dampingFraction: 0.64),
             value: panelState.isHoverPreviewActive
+        )
+        .animation(
+            .easeOut(duration: 0.18),
+            value: panelState.isHovering
         )
         .animation(
             expansionAnimation,
@@ -693,11 +700,12 @@ struct NotchView: View {
             return .easeOut(duration: 0.18)
         }
 
-        // Collapsing must not overshoot: an underdamped spring dips the panel
-        // below the physical notch height while shrinking back.
+        // iOS 18-style expansion: slightly slower with a more visible bounce.
+        // Collapsing keeps just enough damping to avoid dipping below the
+        // physical notch height.
         return panelState.isExpanded
-            ? .spring(response: 0.52, dampingFraction: 0.82, blendDuration: 0)
-            : .spring(response: 0.42, dampingFraction: 1.0, blendDuration: 0)
+            ? .spring(response: 0.44, dampingFraction: 0.68, blendDuration: 0)
+            : .spring(response: 0.44, dampingFraction: 0.96, blendDuration: 0)
     }
 
     private var systemActivityAnimation: Animation {
@@ -731,11 +739,22 @@ struct NotchView: View {
                 identity: NotchBlurTransitionModifier(radius: 0)
             )
             .combined(with: .opacity)
-            .combined(with: .scale(scale: 1.035, anchor: .top)),
+            .combined(with: .scale(scale: 0.82, anchor: .center)),
             removal: .opacity.combined(
                 with: .scale(scale: 0.985, anchor: .top)
             )
         )
+    }
+
+    private var contentRevealAnimation: Animation {
+        if reduceMotion {
+            return .easeOut(duration: 0.18)
+        }
+
+        if panelState.isExpanded {
+            return .easeOut(duration: 0.42).delay(0.04)
+        }
+        return .easeIn(duration: 0.14)
     }
 
     private var compactSceneTransition: AnyTransition {
@@ -774,9 +793,7 @@ struct NotchView: View {
             return .easeOut(duration: 0.18)
         }
 
-        return panelState.isExpanded
-            ? .spring(response: 0.52, dampingFraction: 0.82, blendDuration: 0)
-            : .spring(response: 0.30, dampingFraction: 1.0, blendDuration: 0)
+        return expansionAnimation
     }
 
     private var trackArtworkAnimation: Animation {
@@ -2659,10 +2676,6 @@ private struct NotchBackdrop: View {
         )
         .accessibilityHidden(true)
         .animation(
-            .easeInOut(duration: 0.36),
-            value: isExpanded
-        )
-        .animation(
             .easeInOut(duration: 0.4),
             value: isPlaying
         )
@@ -4066,29 +4079,6 @@ private struct NotchShape: Shape {
         path.closeSubpath()
         return path
     }
-}
-
-private struct NotchGlassBlurView: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        view.wantsLayer = true
-        view.layerUsesCoreImageFilters = true
-        view.layer?.backgroundColor = NSColor.clear.cgColor
-        view.layer?.isOpaque = false
-
-        if let blurFilter = CIFilter(name: "CIGaussianBlur") {
-            blurFilter.setDefaults()
-            blurFilter.setValue(28, forKey: kCIInputRadiusKey)
-            view.layer?.backgroundFilters = [blurFilter]
-        }
-
-        return view
-    }
-
-    func updateNSView(
-        _ nsView: NSView,
-        context: Context
-    ) {}
 }
 
 private struct CompactSystemActivity: Identifiable {
