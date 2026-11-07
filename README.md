@@ -1,36 +1,69 @@
 <p align="center">
   <img
-    src="NotchMusic/Assets.xcassets/AppIcon.appiconset/icon_512x512@2x.png"
+    src="NotchMusic/Assets.xcassets/AppIconOcean.imageset/app-icon-ocean-512.png"
     width="128"
     alt="NotchMusic icon">
 </p>
 
 # NotchMusic
 
-一个在 MacBook 刘海区域显示 Apple Music 当前播放歌曲的开源 macOS 工具。
+把 MacBook 刘海变成 Apple Music 控制中心的 macOS 应用：播放信息、表盘、日历、系统 HUD 和设备状态都收进刘海里。
 
-## 当前 MVP
+> 需要 macOS 14 或更新版本，以及带刘海的内建屏幕。
 
-- macOS 14+
-- 仅支持有刘海的内建屏幕
-- 仅支持 Apple Music
-- 显示封面、歌曲名、歌手、专辑和播放进度
-- 支持上一首、播放/暂停和下一首
-- 支持拖动播放进度
-- 支持调节 Apple Music 音量
-- 收起播放状态显示动态均衡器图标
-- 可选真实音乐频谱，仅分析 Apple Music 进程，默认关闭
+## 功能
+
+### 刘海音乐面板
+
+- 显示专辑封面、歌曲名、歌手、专辑和播放进度
+- 支持上一首、播放/暂停、下一首、随机播放和音量控制
+- 支持拖动播放进度，进度条提供默认与 Soft Aurora 两种样式
+- 播放控制按钮可自定义排序和显示数量
+- 音乐面板支持无表盘的紧凑布局，专辑封面放大，进度条移到工具栏下方
 - 播放进度颜色跟随专辑封面主色
-- 展开背景使用封面模糊色与环境光
-- 展开顶部使用纯黑区域覆盖物理刘海
-- 未播放时收起宽度与内建刘海一致
-- 鼠标短暂悬停或点击后弹簧展开，移出收起
-- 支持经典、数字和彩虹系列等 10 种表盘
-- 支持屏幕录制、专注模式、Caps Lock、相机和麦克风状态提示
-- 支持音量、内建屏亮度和键盘背光 HUD
-- 提供灵动岛、自定义 OSD 和圆形 3 种 HUD 样式
-- 声音通知支持 White、Accent、Decibel 三种电平样式，可调持续时间、百分比、标签、动画速度和设备图标
-- 支持可选反馈音和自定义音量、亮度按键步长
+- 展开背景提供 8 种动态效果，并可使用封面模糊色和环境光
+- 暂停时在封面周围显示柔和的模糊光晕
+- 收起状态显示动态均衡器，可选真实音乐频谱
+
+### 表盘与个性化
+
+- 13 种表盘：经典、单行数字、流动、流转、双行数字、欢乐时光、头像、表情、彩虹流光、彩虹和谐、彩虹光辉、彩虹庆典和自定义图片
+- 可在音乐界面隐藏表盘，隐藏后自动切换为紧凑音乐布局
+- 支持自定义表盘的图片选区，以及表盘显隐动画
+- 5 套应用图标：紫罗兰、海洋蓝、日落橙、薄荷绿、玫瑰粉
+- 7 种菜单栏图标：刘海、音符、播放列表、多重音符、波形、耳机和唱片
+- 调整图标后即时生效，无需重新启动应用
+
+### 系统 HUD 与状态
+
+- 音量、屏幕亮度和键盘背光 HUD
+- 两种 HUD 布局：灵动岛和自定义 OSD
+- 声音 HUD 支持白色、跟随封面和分贝三种样式
+- 灯光 HUD 支持白色、强调色和光晕三种样式，光晕带渐变光柱动画
+- 可调 HUD 持续时间、动画速度、百分比、标签和音量/亮度步长
+- 支持可选反馈音和触感反馈
+- 显示屏幕录制、专注模式、Caps Lock、相机、麦克风和屏幕锁定状态
+- AirPods 连接时显示对应 3D 模型、电量和设备信息
+
+### 日历面板
+
+- 在刘海面板中切换音乐和日历两个页面
+- 显示月历、选中日期和当天日程
+- 日历内容跟随音乐面板宽度，页面切换只做内容滑动
+
+## 应用图标
+
+<table>
+  <tr>
+    <td align="center"><img src="NotchMusic/Assets.xcassets/AppIconDefault.imageset/app-icon-default-512.png" width="96" alt="紫罗兰"><br>紫罗兰</td>
+    <td align="center"><img src="NotchMusic/Assets.xcassets/AppIconOcean.imageset/app-icon-ocean-512.png" width="96" alt="海洋蓝"><br>海洋蓝（默认）</td>
+    <td align="center"><img src="NotchMusic/Assets.xcassets/AppIconSunset.imageset/app-icon-sunset-512.png" width="96" alt="日落橙"><br>日落橙</td>
+    <td align="center"><img src="NotchMusic/Assets.xcassets/AppIconMint.imageset/app-icon-mint-512.png" width="96" alt="薄荷绿"><br>薄荷绿</td>
+    <td align="center"><img src="NotchMusic/Assets.xcassets/AppIconRose.imageset/app-icon-rose-512.png" width="96" alt="玫瑰粉"><br>玫瑰粉</td>
+  </tr>
+</table>
+
+应用图标和菜单栏图标都可以在「设置 → 通用」中切换。
 
 ## 构建
 
@@ -53,6 +86,17 @@ xcodebuild \
 open .build/Build/Products/Debug/NotchMusic.app
 ```
 
+Release 构建目前面向 Apple Silicon：
+
+```bash
+xcodebuild \
+  -project NotchMusic.xcodeproj \
+  -scheme NotchMusic \
+  -configuration Release \
+  -derivedDataPath .build-release \
+  build
+```
+
 ## 首次使用
 
 1. 启动 NotchMusic。
@@ -60,9 +104,11 @@ open .build/Build/Products/Debug/NotchMusic.app
 3. 在系统提示中允许 NotchMusic 控制 Apple Music。
 4. 打开 Apple Music 并播放歌曲。
 5. 如需实时频谱，在设置中启用“实时频谱”；首次使用时允许 NotchMusic 捕获系统音频。
+6. 如需日历面板，首次打开时允许 NotchMusic 访问日历。
 
 如果误拒绝了权限，可以在“系统设置 → 隐私与安全性 → 自动化”中重新开启。
 音频捕获权限可以在“系统设置 → 隐私与安全性 → 音频录制”中重新开启。
+日历权限可以在“系统设置 → 隐私与安全性 → 日历”中重新开启。
 如需接管音量、亮度和键盘背光按键，还需要在“系统设置 → 隐私与安全性 → 辅助功能”中允许 NotchMusic。
 
 ## 实现说明
@@ -78,13 +124,16 @@ open .build/Build/Products/Debug/NotchMusic.app
 ## 限制
 
 - 只有带刘海的内建屏幕会显示面板。
+- 仅支持 Apple Music，不支持 Spotify 等其他播放器。
+- Release 构建目前仅包含 Apple Silicon（arm64）架构。
 - 实时频谱需要 macOS 14.2 或更新版本，并需要用户授予音频捕获权限。
+- 日历面板需要用户授予日历访问权限。
 - 屏幕录制状态检测依赖未公开的 CoreGraphics 接口，系统升级后可能需要适配。
 - 系统 HUD 的亮度与键盘背光控制依赖未公开的系统接口，且外接显示器亮度暂不支持。
 - 未签名、未公证的构建可能触发 Gatekeeper 提示。
 - 未签名构建的自动化权限可能因重新构建而需要重新授权。
 - 当前不包含 App Store 分发配置。
-- 当前 Bundle ID 为 `io.github.hoxxxxx.NotchMusic`。
+- 当前 Bundle ID 为 `io.github.hoxxxxx.NotchMusic`，版本为 `0.2.0`。
 
 ## 许可证
 
