@@ -7,8 +7,6 @@ import Foundation
 enum SystemHUDStyle: String, CaseIterable, Identifiable {
     case island
     case customOSD
-    case vertical
-    case circular
 
     var id: String { rawValue }
 
@@ -18,14 +16,24 @@ enum SystemHUDStyle: String, CaseIterable, Identifiable {
             return "灵动岛"
         case .customOSD:
             return "自定义 OSD"
-        case .vertical:
-            return "垂直条"
-        case .circular:
-            return "圆形"
         }
     }
 
     static let storageKey = "NotchMusic.systemHUDStyle"
+
+    static func migrateRemovedStylesIfNeeded(
+        defaults: UserDefaults = .standard
+    ) {
+        switch defaults.string(forKey: storageKey) {
+        case "vertical", "circular":
+            defaults.set(
+                SystemHUDStyle.customOSD.rawValue,
+                forKey: storageKey
+            )
+        default:
+            break
+        }
+    }
 }
 
 enum SystemHUDControl: String, CaseIterable, Identifiable, Sendable {
@@ -40,7 +48,7 @@ enum SystemHUDControl: String, CaseIterable, Identifiable, Sendable {
         case .volume:
             return "音量"
         case .displayBrightness:
-            return "亮度"
+            return "屏幕亮度"
         case .keyboardBrightness:
             return "键盘背光"
         }
@@ -99,6 +107,8 @@ enum SystemHUDSettings {
         "NotchMusic.systemHUD.keyboardBrightnessEnabled"
     static let audioFeedbackEnabled =
         "NotchMusic.systemHUD.audioFeedbackEnabled"
+    static let hapticFeedbackEnabled =
+        "NotchMusic.systemHUD.hapticFeedbackEnabled"
     static let coloredVolumeEnabled =
         "NotchMusic.systemHUD.coloredVolumeEnabled"
     static let nativeControlsVisible =
@@ -130,12 +140,12 @@ enum SystemHUDSettings {
         )
     }
 
-    static func isColoredVolumeEnabled(
+    static func isHapticFeedbackEnabled(
         defaults: UserDefaults = .standard
     ) -> Bool {
         bool(
-            for: coloredVolumeEnabled,
-            defaultValue: true,
+            for: hapticFeedbackEnabled,
+            defaultValue: false,
             defaults: defaults
         )
     }
@@ -161,10 +171,10 @@ enum SystemHUDSettings {
         switch control {
         case .volume:
             key = fine ? volumeFineStep : volumeStep
-            fallback = fine ? 2 : 6
+            fallback = fine ? 2 : 5
         case .displayBrightness, .keyboardBrightness:
             key = fine ? brightnessFineStep : brightnessStep
-            fallback = fine ? 2 : 6
+            fallback = fine ? 2 : 5
         }
 
         let value = defaults.object(forKey: key) == nil
@@ -193,6 +203,323 @@ enum SystemHUDSettings {
             return defaultValue
         }
         return defaults.bool(forKey: key)
+    }
+}
+
+enum SoundHUDStyle: String, CaseIterable, Identifiable {
+    case white
+    case accent
+    case decibel
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .white:
+            return "白色"
+        case .accent:
+            return "跟随封面"
+        case .decibel:
+            return "分贝"
+        }
+    }
+}
+
+enum SoundHUDSpeed: String, CaseIterable, Identifiable {
+    case smooth
+    case fast
+    case instant
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .smooth:
+            return "平滑"
+        case .fast:
+            return "快速"
+        case .instant:
+            return "即时"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .smooth:
+            return "waveform.path"
+        case .fast:
+            return "water.waves"
+        case .instant:
+            return "bolt.fill"
+        }
+    }
+}
+
+enum SoundHUDContent: String, CaseIterable, Identifiable {
+    case symbol
+    case device
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .symbol:
+            return "符号"
+        case .device:
+            return "设备"
+        }
+    }
+}
+
+enum SoundHUDSettings {
+    static let duration = "NotchMusic.soundHUD.duration"
+    static let style = "NotchMusic.soundHUD.style"
+    static let showsPercentage = "NotchMusic.soundHUD.showsPercentage"
+    static let hidesLabel = "NotchMusic.soundHUD.hidesLabel"
+    static let speed = "NotchMusic.soundHUD.speed"
+    static let content = "NotchMusic.soundHUD.content"
+
+    static let defaultDuration: TimeInterval = 1.5
+
+    static func duration(defaults: UserDefaults = .standard) -> TimeInterval {
+        guard defaults.object(forKey: duration) != nil else {
+            return defaultDuration
+        }
+        return min(max(defaults.double(forKey: duration), 0.5), 5)
+    }
+
+    static func migrateColoredVolumePreferenceIfNeeded(
+        defaults: UserDefaults = .standard
+    ) {
+        let migrationKey = "NotchMusic.soundHUD.migratedColoredVolume"
+        guard !defaults.bool(forKey: migrationKey) else { return }
+        defaults.set(true, forKey: migrationKey)
+        guard defaults.object(forKey: style) == nil,
+              defaults.object(forKey: SystemHUDSettings.coloredVolumeEnabled)
+                != nil else {
+            return
+        }
+
+        let usesColor = defaults.bool(
+            forKey: SystemHUDSettings.coloredVolumeEnabled
+        )
+        defaults.set(
+            (usesColor ? SoundHUDStyle.accent : .white).rawValue,
+            forKey: style
+        )
+    }
+}
+
+enum LightingHUDStyle: String, CaseIterable, Identifiable {
+    case white
+    case accent
+    case glow
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .white:
+            return "白色"
+        case .accent:
+            return "强调色"
+        case .glow:
+            return "光晕"
+        }
+    }
+}
+
+enum LightingHUDSettings {
+    static let duration = "NotchMusic.lightingHUD.duration"
+    static let style = "NotchMusic.lightingHUD.style"
+    static let speed = "NotchMusic.lightingHUD.speed"
+    static let showsPercentage = "NotchMusic.lightingHUD.showsPercentage"
+    static let hidesLabel = "NotchMusic.lightingHUD.hidesLabel"
+
+    static let defaultDuration: TimeInterval = 1.5
+
+    static func duration(defaults: UserDefaults = .standard) -> TimeInterval {
+        guard defaults.object(forKey: duration) != nil else {
+            return defaultDuration
+        }
+        return min(max(defaults.double(forKey: duration), 0.5), 5)
+    }
+}
+
+struct SoundOutputDevice {
+    enum Kind {
+        case airPods
+        case airPodsMax
+        case headphones
+        case builtIn
+        case display
+        case other
+    }
+
+    let name: String
+    let kind: Kind
+    let manufacturer: String?
+    let transport: UInt32?
+
+    var symbolName: String {
+        switch kind {
+        case .airPods:
+            return "airpodspro"
+        case .airPodsMax:
+            return "airpodsmax"
+        case .headphones:
+            return "headphones"
+        case .builtIn:
+            return "hifispeaker.fill"
+        case .display:
+            return "display"
+        case .other:
+            return "speaker.wave.2.fill"
+        }
+    }
+
+    var isLikelyAirPods: Bool {
+        if kind == .airPods || kind == .airPodsMax {
+            return true
+        }
+        return transport == kAudioDeviceTransportTypeBluetooth
+            && manufacturer?.localizedCaseInsensitiveContains("Apple")
+                == true
+    }
+
+    var airPodsModel: AirPodsModelKind? {
+        guard isLikelyAirPods else { return nil }
+        if kind == .airPodsMax {
+            return .airPodsMax
+        }
+        if name.localizedCaseInsensitiveContains("Max") {
+            return .airPodsMax
+        }
+        if name.localizedCaseInsensitiveContains("Pro") {
+            return .airPodsPro
+        }
+        return kind == .airPods ? .airPods : .airPodsPro
+    }
+
+    static func preferredAirPodsModel() -> AirPodsModelKind? {
+        current()?.airPodsModel
+    }
+
+    static func current() -> SoundOutputDevice? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var deviceID = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            0,
+            nil,
+            &size,
+            &deviceID
+        ) == noErr, deviceID != kAudioObjectUnknown else {
+            return nil
+        }
+
+        let name = stringProperty(
+            deviceID: deviceID,
+            selector: kAudioObjectPropertyName
+        ) ?? "扬声器"
+        let manufacturer = stringProperty(
+            deviceID: deviceID,
+            selector: kAudioObjectPropertyManufacturer
+        )
+        let transport = uint32Property(
+            deviceID: deviceID,
+            selector: kAudioDevicePropertyTransportType
+        )
+        return SoundOutputDevice(
+            name: name,
+            kind: kind(name: name, transport: transport),
+            manufacturer: manufacturer,
+            transport: transport
+        )
+    }
+
+    private static func kind(
+        name: String,
+        transport: UInt32?
+    ) -> Kind {
+        let lowercased = name.lowercased()
+        if lowercased.contains("airpods max") {
+            return .airPodsMax
+        }
+        if lowercased.contains("airpods") {
+            return .airPods
+        }
+        if lowercased.contains("headphone")
+            || lowercased.contains("耳机") {
+            return .headphones
+        }
+        guard let transport else { return .other }
+
+        switch transport {
+        case kAudioDeviceTransportTypeBuiltIn:
+            return .builtIn
+        case kAudioDeviceTransportTypeBluetooth:
+            return .headphones
+        case kAudioDeviceTransportTypeHDMI,
+             kAudioDeviceTransportTypeDisplayPort:
+            return .display
+        default:
+            return .other
+        }
+    }
+
+    private static func stringProperty(
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector
+    ) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &size,
+            &value
+        ) == noErr, let value else {
+            return nil
+        }
+        return value.takeRetainedValue() as String
+    }
+
+    private static func uint32Property(
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector
+    ) -> UInt32? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectGetPropertyData(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &size,
+            &value
+        ) == noErr else {
+            return nil
+        }
+        return value
     }
 }
 
@@ -382,13 +709,31 @@ final class SystemHUDController: ObservableObject {
             backend.playVolumeFeedback()
         }
 
+        if event.control == .volume,
+           SystemHUDSettings.isHapticFeedbackEnabled(defaults: defaults),
+           event.action != .mute {
+            NSHapticFeedbackManager.defaultPerformer.perform(
+                .levelChange,
+                performanceTime: .now
+            )
+        }
+
         scheduleHide()
     }
 
     private func scheduleHide() {
         hideTask?.cancel()
+        let hideDelay: TimeInterval
+        if presentation?.control == .volume {
+            hideDelay = SoundHUDSettings.duration()
+        } else {
+            hideDelay = LightingHUDSettings.duration()
+        }
+
         hideTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 1_350_000_000)
+            try? await Task.sleep(
+                nanoseconds: UInt64(hideDelay * 1_000_000_000)
+            )
             guard !Task.isCancelled else { return }
             self?.presentation = nil
         }

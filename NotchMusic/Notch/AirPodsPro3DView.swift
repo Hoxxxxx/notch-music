@@ -18,6 +18,17 @@ enum AirPodsModelKind: String, Equatable {
         }
     }
 
+    var systemImage: String {
+        switch self {
+        case .airPods:
+            return "airpods"
+        case .airPodsPro:
+            return "airpodspro"
+        case .airPodsMax:
+            return "airpods.max"
+        }
+    }
+
     static func inferred(
         from name: String,
         productID: UInt16?
@@ -97,56 +108,6 @@ enum AirPodsModelKind: String, Equatable {
     ]
 }
 
-enum AirPodsModelSelection: String, CaseIterable, Identifiable {
-    static let storageKey = "NotchMusic.airPodsModelSelection"
-
-    case automatic
-    case airPods
-    case airPodsPro
-    case airPodsMax
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .automatic:
-            return "自动识别"
-        case .airPods:
-            return "AirPods"
-        case .airPodsPro:
-            return "AirPods Pro"
-        case .airPodsMax:
-            return "AirPods Max"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .automatic:
-            return "arrow.triangle.2.circlepath"
-        case .airPods:
-            return "airpods"
-        case .airPodsPro:
-            return "airpodspro"
-        case .airPodsMax:
-            return "airpods.max"
-        }
-    }
-
-    var model: AirPodsModelKind? {
-        switch self {
-        case .automatic:
-            return nil
-        case .airPods:
-            return .airPods
-        case .airPodsPro:
-            return .airPodsPro
-        case .airPodsMax:
-            return .airPodsMax
-        }
-    }
-}
-
 struct AirPods3DView: NSViewRepresentable {
     let model: AirPodsModelKind
 
@@ -174,7 +135,7 @@ struct AirPods3DView: NSViewRepresentable {
 
         addLighting(to: scene)
 
-        let view = SCNView()
+        let view = PassthroughSCNView()
         view.scene = scene
         view.pointOfView = camera
         view.backgroundColor = .clear
@@ -218,6 +179,12 @@ struct AirPods3DView: NSViewRepresentable {
         ambient.light?.type = .ambient
         ambient.light?.intensity = 260
         scene.rootNode.addChildNode(ambient)
+    }
+}
+
+private final class PassthroughSCNView: SCNView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
     }
 }
 

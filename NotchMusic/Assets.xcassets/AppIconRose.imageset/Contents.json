@@ -1,12 +1,12 @@
 {
   "images": [
     {
-      "filename": "app-icon-spectrum-512.png",
+      "filename": "app-icon-rose-512.png",
       "idiom": "universal",
       "scale": "1x"
     },
     {
-      "filename": "app-icon-spectrum-1024.png",
+      "filename": "app-icon-rose-1024.png",
       "idiom": "universal",
       "scale": "2x"
     }

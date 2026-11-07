@@ -1,12 +1,10 @@
-import Combine
 import CoreAudio
 import Foundation
 
 struct DeviceConnectionPresentation: Equatable {
     let deviceName: String
     let model: AirPodsModelKind
-    let volume: Double?
-    let isMuted: Bool
+    let batteryLevel: Double?
 }
 
 @MainActor
@@ -15,14 +13,10 @@ final class DeviceConnectionMonitor: ObservableObject {
 
     @Published private(set) var presentation: DeviceConnectionPresentation?
 
-    private let controlBackend = SystemControlBackend()
     private var defaultOutputListener: AudioObjectPropertyListenerBlock?
     private var lastOutputIdentifier: String?
     private var classificationTask: Task<Void, Never>?
     private var hideTask: Task<Void, Never>?
-    private var volumeRefreshTask: Task<Void, Never>?
-    private var selectionCancellable: AnyCancellable?
-    private var detectedModel = AirPodsModelKind.airPodsPro
     private var isStarted = false
 
     func start() {
@@ -52,16 +46,6 @@ final class DeviceConnectionMonitor: ObservableObject {
             return
         }
         defaultOutputListener = listener
-
-        selectionCancellable = NotificationCenter.default.publisher(
-            for: UserDefaults.didChangeNotification
-        )
-        .receive(on: RunLoop.main)
-        .sink { [weak self] _ in
-            Task { @MainActor in
-                self?.preferredModelDidChange()
-            }
-        }
     }
 
     func stop() {
@@ -69,10 +53,6 @@ final class DeviceConnectionMonitor: ObservableObject {
         hideTask = nil
         classificationTask?.cancel()
         classificationTask = nil
-        selectionCancellable?.cancel()
-        selectionCancellable = nil
-        volumeRefreshTask?.cancel()
-        volumeRefreshTask = nil
         presentation = nil
 
         if let defaultOutputListener {
@@ -105,44 +85,31 @@ final class DeviceConnectionMonitor: ObservableObject {
         classificationTask?.cancel()
         hideTask?.cancel()
         hideTask = nil
-        volumeRefreshTask?.cancel()
-        volumeRefreshTask = nil
 
         classificationTask = Task { [weak self] in
-            let model = await Self.airPodsModel(for: output)
+            let info = await Self.airPodsConnectionInfo(for: output)
             guard !Task.isCancelled, let self else { return }
             guard let current = Self.defaultOutputDevice(),
                   current.identifier == output.identifier else {
                 return
             }
-            self.showConnectedAirPods(output, model: model)
+            self.showConnectedAirPods(output, info: info)
         }
     }
 
     private func showConnectedAirPods(
         _ output: AudioOutputDevice,
-        model: AirPodsModelKind
+        info: AirPodsConnectionInfo
     ) {
-        detectedModel = model
+        let model = AirPodsModelKind.inferred(
+            from: output.name,
+            productID: info.productID
+        )
         presentation = DeviceConnectionPresentation(
             deviceName: output.name,
-            model: effectiveModel(detected: model),
-            volume: currentVolume,
-            isMuted: currentIsMuted
+            model: model,
+            batteryLevel: info.batteryLevel
         )
-
-        volumeRefreshTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 250_000_000)
-                guard !Task.isCancelled, let self else { return }
-                guard let output = Self.defaultOutputDevice(),
-                      output.isAirPods else {
-                    self.dismiss()
-                    return
-                }
-                self.updateVolume()
-            }
-        }
 
         if !Self.keepsAirPodsPresentationVisible {
             hideTask = Task { [weak self] in
@@ -153,78 +120,28 @@ final class DeviceConnectionMonitor: ObservableObject {
         }
     }
 
-    private var currentVolume: Double? {
-        controlBackend.currentState(.volume)?.level
-    }
-
-    private var currentIsMuted: Bool {
-        controlBackend.currentState(.volume)?.isMuted ?? false
-    }
-
-    private func updateVolume() {
-        guard let presentation else { return }
-        let next = DeviceConnectionPresentation(
-            deviceName: presentation.deviceName,
-            model: presentation.model,
-            volume: currentVolume,
-            isMuted: currentIsMuted
-        )
-        guard next != presentation else { return }
-        self.presentation = next
-    }
-
-    private func preferredModelDidChange() {
-        guard let presentation else { return }
-        let model = effectiveModel(detected: detectedModel)
-        guard model != presentation.model else { return }
-        self.presentation = DeviceConnectionPresentation(
-            deviceName: presentation.deviceName,
-            model: model,
-            volume: presentation.volume,
-            isMuted: presentation.isMuted
-        )
-    }
-
-    private func effectiveModel(
-        detected: AirPodsModelKind
-    ) -> AirPodsModelKind {
-        let rawValue = UserDefaults.standard.string(
-            forKey: AirPodsModelSelection.storageKey
-        )
-        let selection = rawValue.flatMap(
-            AirPodsModelSelection.init(rawValue:)
-        ) ?? .automatic
-        return selection.model ?? detected
-    }
-
     private func dismiss() {
         classificationTask?.cancel()
         classificationTask = nil
         hideTask?.cancel()
         hideTask = nil
-        volumeRefreshTask?.cancel()
-        volumeRefreshTask = nil
         presentation = nil
     }
 
-    private nonisolated static func airPodsModel(
+    private nonisolated static func airPodsConnectionInfo(
         for output: AudioOutputDevice
-    ) async -> AirPodsModelKind {
-        let productID = await bluetoothProductID(for: output.uid)
-        return AirPodsModelKind.inferred(
-            from: output.name,
-            productID: productID
-        )
+    ) async -> AirPodsConnectionInfo {
+        await bluetoothConnectionInfo(for: output.uid)
     }
 
-    private nonisolated static func bluetoothProductID(
+    private nonisolated static func bluetoothConnectionInfo(
         for deviceUID: String?
-    ) async -> UInt16? {
+    ) async -> AirPodsConnectionInfo {
         await Task.detached(priority: .utility) {
             guard let deviceUID,
                   let targetAddress = normalizedDeviceAddress(deviceUID)
             else {
-                return nil
+                return AirPodsConnectionInfo()
             }
 
             let process = Process()
@@ -240,7 +157,7 @@ final class DeviceConnectionMonitor: ObservableObject {
             do {
                 try process.run()
             } catch {
-                return nil
+                return AirPodsConnectionInfo()
             }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
@@ -250,7 +167,7 @@ final class DeviceConnectionMonitor: ObservableObject {
                     as? [String: Any],
                   let sections = json["SPBluetoothDataType"]
                     as? [[String: Any]] else {
-                return nil
+                return AirPodsConnectionInfo()
             }
 
             for section in sections {
@@ -264,25 +181,63 @@ final class DeviceConnectionMonitor: ObservableObject {
                               let address = details["device_address"]
                                 as? String,
                               normalizedDeviceAddress(address)
-                                == targetAddress,
-                              let rawProductID = details["device_productID"]
-                                as? String else {
+                                == targetAddress else {
                             continue
                         }
-                        return UInt16(
-                            rawProductID
-                                .replacingOccurrences(
-                                    of: "0x",
-                                    with: "",
-                                    options: .caseInsensitive
-                                ),
-                            radix: 16
+                        let rawProductID = details["device_productID"]
+                            as? String
+                        return AirPodsConnectionInfo(
+                            productID: rawProductID.flatMap {
+                                UInt16(
+                                    $0.replacingOccurrences(
+                                        of: "0x",
+                                        with: "",
+                                        options: .caseInsensitive
+                                    ),
+                                    radix: 16
+                                )
+                            },
+                            batteryLevel: batteryLevel(from: details)
                         )
                     }
                 }
             }
-            return nil
+            return AirPodsConnectionInfo()
         }.value
+    }
+
+    private nonisolated static func batteryLevel(
+        from details: [String: Any]
+    ) -> Double? {
+        let primaryKeys = [
+            "device_batteryLevel",
+            "device_batteryLevelLeft",
+            "device_batteryLevelRight"
+        ]
+        let primaryLevels = primaryKeys.compactMap {
+            batteryPercentage(details[$0])
+        }
+        if let level = primaryLevels.min() {
+            return level
+        }
+        return batteryPercentage(details["device_batteryLevelCase"])
+    }
+
+    private nonisolated static func batteryPercentage(
+        _ rawValue: Any?
+    ) -> Double? {
+        let value: Double?
+        if let number = rawValue as? NSNumber {
+            value = number.doubleValue
+        } else if let string = rawValue as? String {
+            value = Double(
+                string.filter { $0.isNumber || $0 == "." }
+            )
+        } else {
+            value = nil
+        }
+        guard let value else { return nil }
+        return min(max(value / 100, 0), 1)
     }
 
     private nonisolated static func normalizedDeviceAddress(
@@ -415,5 +370,18 @@ private struct AudioOutputDevice {
                         "Apple"
                     ) == true
             )
+    }
+}
+
+private struct AirPodsConnectionInfo {
+    let productID: UInt16?
+    let batteryLevel: Double?
+
+    init(
+        productID: UInt16? = nil,
+        batteryLevel: Double? = nil
+    ) {
+        self.productID = productID
+        self.batteryLevel = batteryLevel
     }
 }

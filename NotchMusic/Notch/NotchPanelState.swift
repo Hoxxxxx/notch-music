@@ -12,6 +12,7 @@ final class NotchPanelState: ObservableObject {
     @Published private(set) var screenCenterX: CGFloat = 0
 
     @Published private(set) var isHovering = false
+    private(set) var visibleSize: CGSize = .zero
     private var isPinnedExpanded: Bool
     private var restoresExpandedAfterScreenLock = false
     private var hoverTask: Task<Void, Never>?
@@ -45,6 +46,10 @@ final class NotchPanelState: ObservableObject {
         self.notchLeading = notchLeading
         self.notchTrailing = notchTrailing
         self.screenCenterX = screenCenterX
+    }
+
+    func updateVisibleSize(_ size: CGSize) {
+        visibleSize = size
     }
 
     func setHovering(_ hovering: Bool) {

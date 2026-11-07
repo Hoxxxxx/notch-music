@@ -21,6 +21,8 @@ final class NotchPanelController {
     private var metrics: NotchMetrics?
     private var isScreenLocked: Bool
     private var screenUnlockTask: Task<Void, Never>?
+    private var pointerTrackingTask: Task<Void, Never>?
+    private var isPointerInsideInteractiveRegion = false
     private var cancellables: Set<AnyCancellable> = []
 
     init(
@@ -78,6 +80,7 @@ final class NotchPanelController {
         )
         panel.contentView = NSHostingView(rootView: rootView)
         panel.contentView?.wantsLayer = true
+        panel.contentView?.autoresizingMask = [.width, .height]
         panel.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
 
         systemActivityMonitor.$isScreenLocked
@@ -89,10 +92,12 @@ final class NotchPanelController {
                 }
             }
             .store(in: &cancellables)
+
     }
 
     func show() {
         refreshScreen()
+        startPointerTracking()
     }
 
     func screenParametersDidChange() {
@@ -124,7 +129,11 @@ final class NotchPanelController {
         panel.orderFrontRegardless()
         if isScreenLocked {
             panel.ignoresMouseEvents = true
+            isPointerInsideInteractiveRegion = false
             _ = lockScreenIsland.enter(panel: panel)
+        } else {
+            isPointerInsideInteractiveRegion = false
+            updatePointerPassthrough()
         }
     }
 
@@ -137,6 +146,7 @@ final class NotchPanelController {
 
         guard !isLocked else {
             panel.ignoresMouseEvents = true
+            isPointerInsideInteractiveRegion = false
             panelState.collapseForScreenLock()
             _ = lockScreenIsland.enter(panel: panel)
             return
@@ -147,14 +157,60 @@ final class NotchPanelController {
             guard !Task.isCancelled else { return }
             guard let self else { return }
             self.lockScreenIsland.leave(panel: self.panel)
-            self.panel.ignoresMouseEvents = false
+            self.isPointerInsideInteractiveRegion = false
             self.panelState.restoreAfterScreenLock()
+            self.updatePointerPassthrough()
         }
     }
 
+    private func startPointerTracking() {
+        guard pointerTrackingTask == nil else { return }
+
+        pointerTrackingTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                self?.updatePointerPassthrough()
+                try? await Task.sleep(nanoseconds: 33_000_000)
+            }
+        }
+    }
+
+    private func updatePointerPassthrough() {
+        guard !isScreenLocked else { return }
+
+        if NSEvent.pressedMouseButtons != 0, !panel.ignoresMouseEvents {
+            return
+        }
+
+        let size = panelState.visibleSize
+        guard size.width > 0, size.height > 0 else {
+            panel.ignoresMouseEvents = true
+            return
+        }
+
+        let frame = panel.frame
+        let interactiveFrame = NSRect(
+            x: frame.midX - size.width / 2,
+            y: frame.maxY - size.height,
+            width: size.width,
+            height: size.height
+        )
+        let isInside = interactiveFrame.contains(NSEvent.mouseLocation)
+
+        if isInside != isPointerInsideInteractiveRegion {
+            isPointerInsideInteractiveRegion = isInside
+            panelState.setHovering(isInside)
+        }
+        panel.ignoresMouseEvents = !isInside
+    }
+
     private func updateWindowFrame(metrics: NotchMetrics) {
-        // The panel stays fixed so the SwiftUI spring is the only size animation.
-        let size = NotchLayout.windowSize(notchWidth: metrics.notchWidth)
+        let contentSize = CGSize(
+            width: NotchLayout.expandedWidth(
+                notchWidth: metrics.notchWidth
+            ),
+            height: NotchLayout.expandedHeight
+        )
+        let size = NotchLayout.windowSize(for: contentSize)
         let frame = NSRect(
             x: metrics.screen.frame.midX - size.width / 2,
             y: metrics.screen.frame.maxY - size.height,
@@ -162,5 +218,8 @@ final class NotchPanelController {
             height: size.height
         )
         panel.setFrame(frame, display: true)
+        panel.contentView?.frame = NSRect(origin: .zero, size: frame.size)
+        panel.contentView?.layoutSubtreeIfNeeded()
+        updatePointerPassthrough()
     }
 }

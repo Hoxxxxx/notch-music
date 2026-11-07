@@ -4,7 +4,8 @@ import UniformTypeIdentifiers
 
 private enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
-    case systemHUD
+    case lighting
+    case sound
     case music
     case watchFace
     case detection
@@ -16,8 +17,10 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general:
             return "通用"
-        case .systemHUD:
-            return "系统 HUD"
+        case .lighting:
+            return "灯光"
+        case .sound:
+            return "声音"
         case .music:
             return "音乐"
         case .watchFace:
@@ -33,8 +36,10 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general:
             return "gearshape.fill"
-        case .systemHUD:
-            return "slider.horizontal.3"
+        case .lighting:
+            return "sun.max.fill"
+        case .sound:
+            return "speaker.wave.2.fill"
         case .music:
             return "music.note"
         case .watchFace:
@@ -50,8 +55,10 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general:
             return Color(red: 0.48, green: 0.52, blue: 0.62)
-        case .systemHUD:
-            return Color(red: 0.22, green: 0.56, blue: 1.00)
+        case .lighting:
+            return Color(red: 1.00, green: 0.74, blue: 0.25)
+        case .sound:
+            return Color(red: 0.66, green: 0.40, blue: 1.00)
         case .music:
             return Color(red: 1.00, green: 0.34, blue: 0.38)
         case .watchFace:
@@ -65,20 +72,24 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    @State private var selectedCategory = SettingsCategory.systemHUD
+    @State private var selectedCategory = SettingsCategory.general
     @State private var isSidebarExpanded = false
     @State private var hoveredCategory: SettingsCategory?
+    @State private var soundIconPreviewIndex = 0
+    @State private var glowPreviewLevel: CGFloat = 1
+    @State private var decibelPreviewLevel: CGFloat = 0.40
     @State private var selectedMusicControlSlot: Int?
     @State private var watchFaceCropEditor: WatchFaceCropEditorState?
     @State private var watchFaceImageError: String?
     @FocusState private var isEmojiFieldFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var musicMonitor: MusicMonitor
     @EnvironmentObject private var systemActivityMonitor: SystemActivityMonitor
     @EnvironmentObject private var audioSpectrumMonitor: AudioSpectrumMonitor
     @EnvironmentObject private var systemHUDController: SystemHUDController
     @AppStorage(SystemHUDSettings.style)
-    private var systemHUDStyleRaw = SystemHUDStyle.island.rawValue
+    private var systemHUDStyleRaw = SystemHUDStyle.customOSD.rawValue
     @AppStorage(SystemHUDSettings.volumeEnabled)
     private var volumeHUDEnabled = true
     @AppStorage(SystemHUDSettings.brightnessEnabled)
@@ -87,25 +98,47 @@ struct SettingsView: View {
     private var keyboardBrightnessHUDEnabled = true
     @AppStorage(SystemHUDSettings.audioFeedbackEnabled)
     private var audioFeedbackEnabled = false
-    @AppStorage(SystemHUDSettings.coloredVolumeEnabled)
-    private var coloredVolumeEnabled = true
+    @AppStorage(SystemHUDSettings.hapticFeedbackEnabled)
+    private var hapticFeedbackEnabled = false
     @AppStorage(SystemHUDSettings.nativeControlsVisible)
     private var showsNativeSystemControls = false
     @AppStorage(SystemHUDSettings.volumeStep)
-    private var volumeStep = 6
+    private var volumeStep = 5
     @AppStorage(SystemHUDSettings.volumeFineStep)
     private var volumeFineStep = 2
     @AppStorage(SystemHUDSettings.brightnessStep)
-    private var brightnessStep = 6
+    private var brightnessStep = 5
     @AppStorage(SystemHUDSettings.brightnessFineStep)
     private var brightnessFineStep = 2
+    @AppStorage(LightingHUDSettings.duration)
+    private var lightingHUDDuration = LightingHUDSettings.defaultDuration
+    @AppStorage(LightingHUDSettings.style)
+    private var lightingHUDStyleRaw = LightingHUDStyle.glow.rawValue
+    @AppStorage(LightingHUDSettings.speed)
+    private var lightingHUDSpeedRaw = SoundHUDSpeed.smooth.rawValue
+    @AppStorage(LightingHUDSettings.showsPercentage)
+    private var lightingHUDShowsPercentage = true
+    @AppStorage(LightingHUDSettings.hidesLabel)
+    private var lightingHUDHidesLabel = false
+    @AppStorage(SoundHUDSettings.duration)
+    private var soundHUDDuration = SoundHUDSettings.defaultDuration
+    @AppStorage(SoundHUDSettings.style)
+    private var soundHUDStyleRaw = SoundHUDStyle.decibel.rawValue
+    @AppStorage(SoundHUDSettings.speed)
+    private var soundHUDSpeedRaw = SoundHUDSpeed.smooth.rawValue
+    @AppStorage(SoundHUDSettings.showsPercentage)
+    private var soundHUDShowsPercentage = true
+    @AppStorage(SoundHUDSettings.hidesLabel)
+    private var soundHUDHidesLabel = false
+    @AppStorage(SoundHUDSettings.content)
+    private var soundHUDContentRaw = SoundHUDContent.device.rawValue
     @AppStorage(MusicSpectrumSettings.enabled)
-    private var musicSpectrumEnabled = false
+    private var musicSpectrumEnabled = true
     @AppStorage(MusicControlLayoutSettings.storageKey)
     private var musicControlLayoutRaw =
         MusicControlLayoutSettings.defaultRawValue
     @AppStorage(ProgressTrackStyle.storageKey)
-    private var progressTrackStyleRaw = ProgressTrackStyle.classic.rawValue
+    private var progressTrackStyleRaw = ProgressTrackStyle.softAurora.rawValue
     @AppStorage(NotchBackgroundSettings.enabled)
     private var notchBackgroundEnabled = true
     @AppStorage(NotchBackgroundSettings.effect)
@@ -114,6 +147,8 @@ struct SettingsView: View {
     private var keepsNotchExpanded = false
     @AppStorage(WatchFaceStyle.storageKey)
     private var watchFaceStyleRaw = WatchFaceStyle.classic.rawValue
+    @AppStorage(WatchFaceDisplaySettings.showsInMusicKey)
+    private var showsWatchFaceInMusic = true
     @AppStorage(MultiAvatarSettings.seedKey)
     private var avatarSeed = MultiAvatarSettings.defaultSeed
     @AppStorage(WatchFaceEmojiSettings.storageKey)
@@ -123,7 +158,7 @@ struct SettingsView: View {
     @AppStorage(WatchFaceImageSettings.cropKey)
     private var watchFaceImageCropRawValue = ""
     @AppStorage(WatchFaceClockSettings.uses24HourKey)
-    private var uses24HourClock = false
+    private var uses24HourClock = true
     @AppStorage(SystemDetectionSettings.screenRecordingDetection)
     private var screenRecordingDetectionEnabled = true
     @AppStorage(SystemDetectionSettings.screenRecordingIndicator)
@@ -149,12 +184,9 @@ struct SettingsView: View {
     @AppStorage(NotchLayout.physicalNotchOutline)
     private var showsPhysicalNotchOutline = false
     @AppStorage(MenuBarIconStyle.storageKey)
-    private var menuBarIconStyleRaw = MenuBarIconStyle.note.rawValue
+    private var menuBarIconStyleRaw = MenuBarIconStyle.notch.rawValue
     @AppStorage(ApplicationIconStyle.storageKey)
-    private var applicationIconStyleRaw = ApplicationIconStyle.spectrum.rawValue
-    @AppStorage(AirPodsModelSelection.storageKey)
-    private var airPodsModelSelectionRaw =
-        AirPodsModelSelection.automatic.rawValue
+    private var applicationIconStyleRaw = ApplicationIconStyle.ocean.rawValue
 
     private let watchFaceEmojiOptions = [
         "😀", "😎", "🥰", "😂", "🤩", "😴", "🤖", "👻",
@@ -230,16 +262,9 @@ struct SettingsView: View {
                     }
 
                     glassCard {
-                        airPodsModelSection
-                    }
-
-                    glassCard {
                         notchBehaviorSection
                     }
-                }
 
-            case .systemHUD:
-                VStack(spacing: 12) {
                     glassCard {
                         systemHUDStyleSection
                     }
@@ -247,9 +272,27 @@ struct SettingsView: View {
                     glassCard {
                         systemHUDControlsSection
                     }
+                }
+
+            case .lighting:
+                VStack(spacing: 12) {
+                    glassCard {
+                        lightingNotificationSection
+                    }
 
                     glassCard {
-                        systemHUDDetailsSection
+                        lightingDetailsSection
+                    }
+                }
+
+            case .sound:
+                VStack(spacing: 12) {
+                    glassCard {
+                        soundNotificationSection
+                    }
+
+                    glassCard {
+                        soundControlsSection
                     }
                 }
 
@@ -301,33 +344,41 @@ struct SettingsView: View {
                 }
 
             case .about:
-                VStack(spacing: 0) {
-                    Spacer(minLength: 0)
+                ZStack {
+                    ConfettiLayer()
+                        .clipped()
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
 
-                    VStack(spacing: 20) {
-                        appLogo
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
 
-                        VStack(spacing: 5) {
-                            appName
+                        VStack(spacing: 20) {
+                            appLogo
 
-                            appTagline
-                                .multilineTextAlignment(.center)
+                            VStack(spacing: 5) {
+                                appName
+
+                                appTagline
+                                    .multilineTextAlignment(.center)
+                            }
+
+                            privacyNotice
+
+                            aboutLinks
                         }
-
-                        privacyNotice
-
-                        aboutLinks
-                    }
-                    .frame(maxWidth: 380)
-                    .transition(
-                        .asymmetric(
-                            insertion: .offset(x: 0, y: -220)
-                                .combined(with: .opacity),
-                            removal: .opacity
+                        .frame(maxWidth: 380)
+                        .transition(
+                            .asymmetric(
+                                insertion: .offset(x: 0, y: -220)
+                                    .combined(with: .opacity),
+                                removal: .opacity
+                            )
                         )
-                    )
 
-                    Spacer(minLength: 0)
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -337,34 +388,17 @@ struct SettingsView: View {
     }
 
     private var appLogo: some View {
-        Image(systemName: "music.note")
-            .font(.system(size: 23, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: 44, height: 44)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color(red: 1.0, green: 0.38, blue: 0.30),
-                        Color(red: 0.92, green: 0.22, blue: 0.18)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.8)
-            }
-            .shadow(
-                color: Color(red: 0.92, green: 0.22, blue: 0.18).opacity(0.34),
-                radius: 10,
-                y: 5
-            )
+        Image(selectedApplicationIconStyle.assetName)
+            .resizable()
+            .interpolation(.high)
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 64, height: 64)
+            .shadow(color: .black.opacity(0.28), radius: 8, y: 4)
+            .accessibilityHidden(true)
     }
 
     private var appName: some View {
-        Text("NotchMusic")
+        SparklesText(text: "NotchMusic")
             .font(.system(size: 20, weight: .bold, design: .rounded))
     }
 
@@ -414,7 +448,7 @@ struct SettingsView: View {
             HStack(spacing: 10) {
                 Image(systemName: category.systemImage)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(category.tint)
+                    .foregroundStyle(isSelected ? Color.black : category.tint)
                     .frame(width: 26, height: 26)
 
                 Text(category.title)
@@ -431,7 +465,7 @@ struct SettingsView: View {
             }
             .foregroundStyle(
                 isSelected
-                    ? Color.white
+                    ? Color.black
                     : Color.white.opacity(
                         hoveredCategory == category ? 1 : 0.78
                     )
@@ -443,16 +477,26 @@ struct SettingsView: View {
                 alignment: .leading
             )
             .background(
-                isSelected
-                    ? Color.white.opacity(0.22)
-                    : hoveredCategory == category
-                        ? Color.white.opacity(0.14)
-                    : Color.clear,
-                in: RoundedRectangle(cornerRadius: 15, style: .continuous)
+                Capsule()
+                    .fill(
+                        isSelected
+                            ? Color.white
+                            : hoveredCategory == category
+                                ? Color.white.opacity(0.14)
+                            : Color.clear
+                    )
             )
-            .contentShape(
-                RoundedRectangle(cornerRadius: 15, style: .continuous)
-            )
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(Color.white)
+                        .shadow(
+                            color: Color.white.opacity(0.55),
+                            radius: 13
+                        )
+                }
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .onHover { hovering in
@@ -483,7 +527,7 @@ struct SettingsView: View {
             LazyVGrid(
                 columns: Array(
                     repeating: GridItem(.flexible(), spacing: 8),
-                    count: 4
+                    count: SystemHUDStyle.allCases.count
                 ),
                 spacing: 8
             ) {
@@ -492,7 +536,9 @@ struct SettingsView: View {
                 }
             }
 
-            Text("使用音量、亮度和键盘背光按键时，在灵动岛内显示对应的系统控件。")
+            Text(
+                "选择系统 HUD 的布局。音量的样式、时长和反馈在“声音”中设置；亮度和键盘背光在“灯光”中设置。"
+            )
                 .settingsCaption()
         }
     }
@@ -502,37 +548,6 @@ struct SettingsView: View {
             sectionHeader(
                 title: "控制",
                 systemImage: "dial.medium.fill"
-            )
-
-            settingToggle(
-                title: "音量 HUD",
-                detail: "拦截系统音量键并显示灵动岛 HUD",
-                systemImage: "speaker.wave.2.fill",
-                isOn: $volumeHUDEnabled
-            )
-            .disabled(!systemHUDController.availability.volume)
-            .opacity(systemHUDController.availability.volume ? 1 : 0.48)
-
-            settingToggle(
-                title: "亮度 HUD",
-                detail: "控制内建显示器亮度",
-                systemImage: "sun.max.fill",
-                isOn: $brightnessHUDEnabled
-            )
-            .disabled(!systemHUDController.availability.displayBrightness)
-            .opacity(
-                systemHUDController.availability.displayBrightness ? 1 : 0.48
-            )
-
-            settingToggle(
-                title: "键盘背光 HUD",
-                detail: "支持内建键盘；也可使用 Command + 亮度键",
-                systemImage: "keyboard.fill",
-                isOn: $keyboardBrightnessHUDEnabled
-            )
-            .disabled(!systemHUDController.availability.keyboardBrightness)
-            .opacity(
-                systemHUDController.availability.keyboardBrightness ? 1 : 0.48
             )
 
             settingToggle(
@@ -550,16 +565,6 @@ struct SettingsView: View {
                         : "隐藏原生控制需要辅助功能权限；未授权时 macOS 仍会显示原生控制。"
             )
                 .settingsCaption()
-
-            Divider()
-                .opacity(0.5)
-
-            settingToggle(
-                title: "音频反馈",
-                detail: "调整音量时播放轻量反馈音",
-                systemImage: "speaker.badge.plus",
-                isOn: $audioFeedbackEnabled
-            )
 
             HStack(spacing: 8) {
                 Circle()
@@ -598,52 +603,777 @@ struct SettingsView: View {
         }
     }
 
-    private var systemHUDDetailsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private var selectedLightingStyle: LightingHUDStyle {
+        LightingHUDStyle(rawValue: lightingHUDStyleRaw) ?? .glow
+    }
+
+    private var selectedLightingSpeed: SoundHUDSpeed {
+        SoundHUDSpeed(rawValue: lightingHUDSpeedRaw) ?? .smooth
+    }
+
+    private var glowPreviewAnimation: Animation? {
+        SoundHUDAppearance.animation(
+            speed: selectedLightingSpeed,
+            reduceMotion: reduceMotion,
+            applies: true
+        )
+    }
+
+    private var glowPreviewHoldDelay: UInt64 {
+        switch selectedLightingSpeed {
+        case .smooth:
+            return 2_600_000_000
+        case .fast, .instant:
+            return 2_000_000_000
+        }
+    }
+
+    private var lightingNotificationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
-                title: "音量与亮度",
-                systemImage: "dial.medium.fill"
+                title: "灯光",
+                systemImage: "sun.max.fill"
             )
 
-            Text("音量")
-                .font(.system(size: 12, weight: .semibold))
+            Text("调整屏幕亮度或键盘背光时在灵动岛显示灯光通知。")
+                .settingsCaption()
 
-            settingToggle(
-                title: "彩色音量显示",
-                detail: "音量进度跟随当前专辑封面的主色",
-                systemImage: "paintpalette.fill",
-                isOn: $coloredVolumeEnabled
+            soundToggleRow(
+                title: "显示器亮度",
+                isOn: $brightnessHUDEnabled
+            )
+            .disabled(!systemHUDController.availability.displayBrightness)
+            .opacity(
+                systemHUDController.availability.displayBrightness ? 1 : 0.48
             )
 
-            stepRow(
-                title: "音量步长",
-                value: $volumeStep
+            soundToggleRow(
+                title: "键盘背光",
+                isOn: $keyboardBrightnessHUDEnabled
             )
-            stepRow(
-                title: "音量微调步长",
-                value: $volumeFineStep
+            .disabled(!systemHUDController.availability.keyboardBrightness)
+            .opacity(
+                systemHUDController.availability.keyboardBrightness ? 1 : 0.48
             )
 
             Divider()
                 .opacity(0.5)
 
-            Text("亮度")
-                .font(.system(size: 12, weight: .semibold))
+            HStack {
+                Text("持续时间")
+                    .font(.system(size: 12, weight: .medium))
 
-            stepRow(
+                Spacer()
+
+                Text(String(format: "%.1f s", lightingHUDDuration))
+                    .font(.system(size: 11, weight: .semibold))
+                    .monospacedDigit()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.primary.opacity(0.07), in: Capsule())
+            }
+
+            Slider(
+                value: $lightingHUDDuration,
+                in: 0.5...5,
+                step: 0.5
+            )
+            .tint(.accentColor)
+
+            HStack {
+                Text("0.5 s")
+                Spacer()
+                Text("5.0 s")
+            }
+            .font(.system(size: 9.5, weight: .medium))
+            .foregroundStyle(.tertiary)
+
+            HStack(spacing: 8) {
+                ForEach(LightingHUDStyle.allCases) { style in
+                    lightingStyleButton(style)
+                }
+            }
+
+            Text("“强调色”沿用显示器暖黄与键盘背光蓝色；“光晕”为纯白渐变光柱。")
+                .settingsCaption()
+
+            soundToggleRow(
+                title: "显示百分比",
+                isOn: $lightingHUDShowsPercentage
+            )
+            soundToggleRow(
+                title: "隐藏标签",
+                isOn: $lightingHUDHidesLabel
+            )
+
+            Divider()
+                .opacity(0.5)
+
+            Text("动画速度")
+                .font(.system(size: 12, weight: .medium))
+
+            HStack(spacing: 8) {
+                ForEach(SoundHUDSpeed.allCases) { speed in
+                    lightingSpeedButton(speed)
+                }
+            }
+
+            Text("HUD 布局可在“通用”中切换。")
+                .settingsCaption()
+        }
+        .task(id: selectedLightingSpeed) {
+            glowPreviewLevel = 1
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: glowPreviewHoldDelay)
+                guard !Task.isCancelled else { return }
+                withAnimation(glowPreviewAnimation) {
+                    glowPreviewLevel = 0.64
+                }
+                try? await Task.sleep(nanoseconds: glowPreviewHoldDelay)
+                guard !Task.isCancelled else { return }
+                withAnimation(glowPreviewAnimation) {
+                    glowPreviewLevel = 0.85
+                }
+                try? await Task.sleep(nanoseconds: glowPreviewHoldDelay)
+                guard !Task.isCancelled else { return }
+                withAnimation(glowPreviewAnimation) {
+                    glowPreviewLevel = 1
+                }
+            }
+        }
+    }
+
+    private var lightingDetailsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(
+                title: "亮度",
+                systemImage: "dial.medium.fill"
+            )
+
+            stepSlider(
                 title: "亮度步长",
                 value: $brightnessStep
             )
-            stepRow(
+            stepSlider(
                 title: "亮度微调步长",
                 value: $brightnessFineStep
             )
 
-            Text("按住 Option + Shift 调整音量或亮度键可使用微调步长。")
+            Text("按住 Option + Shift 调整亮度键可使用微调步长。")
                 .settingsCaption()
 
             Text(hardwareStatusText)
                 .settingsCaption()
+        }
+    }
+
+    private var selectedSoundStyle: SoundHUDStyle {
+        SoundHUDStyle(rawValue: soundHUDStyleRaw) ?? .decibel
+    }
+
+    private var selectedSoundSpeed: SoundHUDSpeed {
+        SoundHUDSpeed(rawValue: soundHUDSpeedRaw) ?? .smooth
+    }
+
+    private var decibelPreviewAnimation: Animation? {
+        SoundHUDAppearance.animation(
+            speed: selectedSoundSpeed,
+            reduceMotion: reduceMotion,
+            applies: true
+        )
+    }
+
+    private var decibelPreviewStepDelay: UInt64 {
+        switch selectedSoundSpeed {
+        case .smooth:
+            return 800_000_000
+        case .fast, .instant:
+            return 450_000_000
+        }
+    }
+
+    private var decibelPreviewEdgeDelay: UInt64 {
+        switch selectedSoundSpeed {
+        case .smooth:
+            return 1_600_000_000
+        case .fast, .instant:
+            return 1_000_000_000
+        }
+    }
+
+    private var selectedSoundContent: SoundHUDContent {
+        SoundHUDContent(rawValue: soundHUDContentRaw) ?? .device
+    }
+
+    private var soundNotificationSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                sectionHeader(
+                    title: "声音",
+                    systemImage: "speaker.wave.2.fill"
+                )
+
+                Spacer()
+
+                Toggle("", isOn: $volumeHUDEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .tint(.accentColor)
+                    .disabled(!systemHUDController.availability.volume)
+                    .opacity(
+                        systemHUDController.availability.volume ? 1 : 0.48
+                    )
+            }
+
+            Text("调整音量时在灵动岛显示声音通知。")
+                .settingsCaption()
+
+            Divider()
+                .opacity(0.5)
+
+            HStack {
+                Text("持续时间")
+                    .font(.system(size: 12, weight: .medium))
+
+                Spacer()
+
+                Text(String(format: "%.1f s", soundHUDDuration))
+                    .font(.system(size: 11, weight: .semibold))
+                    .monospacedDigit()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.primary.opacity(0.07), in: Capsule())
+            }
+
+            Slider(
+                value: $soundHUDDuration,
+                in: 0.5...5,
+                step: 0.5
+            )
+            .tint(.accentColor)
+
+            HStack {
+                Text("0.5 s")
+                Spacer()
+                Text("5.0 s")
+            }
+            .font(.system(size: 9.5, weight: .medium))
+            .foregroundStyle(.tertiary)
+
+            HStack(spacing: 8) {
+                ForEach(SoundHUDStyle.allCases) { style in
+                    soundStyleButton(style)
+                }
+            }
+
+            Text("“跟随封面”会取专辑封面主色；“分贝”会随音量从绿色过渡到红色。")
+                .settingsCaption()
+
+            soundToggleRow(
+                title: "显示百分比",
+                isOn: $soundHUDShowsPercentage
+            )
+            soundToggleRow(
+                title: "隐藏标签",
+                isOn: $soundHUDHidesLabel
+            )
+
+            Divider()
+                .opacity(0.5)
+
+            Text("动画速度")
+                .font(.system(size: 12, weight: .medium))
+
+            HStack(spacing: 8) {
+                ForEach(SoundHUDSpeed.allCases) { speed in
+                    soundSpeedButton(speed)
+                }
+            }
+
+            Divider()
+                .opacity(0.5)
+
+            Text("图标")
+                .font(.system(size: 12, weight: .medium))
+
+            HStack(spacing: 8) {
+                ForEach(SoundHUDContent.allCases) { content in
+                    soundContentButton(content)
+                }
+            }
+
+            Text("HUD 布局可在“通用”中切换。")
+                .settingsCaption()
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard !Task.isCancelled else { return }
+                soundIconPreviewIndex = (soundIconPreviewIndex + 1) % 3
+            }
+        }
+        .task(id: selectedSoundSpeed) {
+            let levels: [CGFloat] = [
+                0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0
+            ]
+            decibelPreviewLevel = levels[0]
+            while !Task.isCancelled {
+                for level in levels.dropFirst() {
+                    guard !Task.isCancelled else { return }
+                    withAnimation(decibelPreviewAnimation) {
+                        decibelPreviewLevel = level
+                    }
+                    try? await Task.sleep(
+                        nanoseconds: decibelPreviewStepDelay
+                    )
+                }
+                guard !Task.isCancelled else { return }
+                try? await Task.sleep(
+                    nanoseconds: decibelPreviewEdgeDelay
+                )
+                for level in levels.dropLast().reversed() {
+                    guard !Task.isCancelled else { return }
+                    withAnimation(decibelPreviewAnimation) {
+                        decibelPreviewLevel = level
+                    }
+                    try? await Task.sleep(
+                        nanoseconds: decibelPreviewStepDelay
+                    )
+                }
+                guard !Task.isCancelled else { return }
+                try? await Task.sleep(
+                    nanoseconds: decibelPreviewEdgeDelay
+                )
+            }
+        }
+    }
+
+    private var soundControlsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader(
+                title: "按键与反馈",
+                systemImage: "dial.medium.fill"
+            )
+
+            settingToggle(
+                title: "音频反馈",
+                detail: "调整音量时播放轻量反馈音",
+                systemImage: "speaker.badge.plus",
+                isOn: $audioFeedbackEnabled
+            )
+
+            settingToggle(
+                title: "触感反馈",
+                detail: "调整音量时在触控板上提供轻微震动",
+                systemImage: "hand.tap.fill",
+                isOn: $hapticFeedbackEnabled
+            )
+
+            stepSlider(
+                title: "音量步长",
+                value: $volumeStep
+            )
+            stepSlider(
+                title: "音量微调步长",
+                value: $volumeFineStep
+            )
+
+            Text("按住 Option + Shift 调整音量键可使用微调步长。")
+                .settingsCaption()
+
+            if !systemHUDController.interceptionActive {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+
+                    Text(
+                        showsNativeSystemControls
+                            ? "“显示系统原生控制”已开启，音量键由 macOS 处理，步长不会生效。"
+                            : "当前未获得辅助功能权限，音量键仍由 macOS 处理；授权后步长才会生效。"
+                    )
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer()
+
+                    if !systemHUDController.accessibilityGranted {
+                        Button("授予权限") {
+                            systemHUDController
+                                .requestAccessibilityPermission()
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+        }
+    }
+
+    private func lightingStyleButton(_ style: LightingHUDStyle) -> some View {
+        let isSelected = selectedLightingStyle == style
+
+        return Button {
+            lightingHUDStyleRaw = style.rawValue
+        } label: {
+            VStack(spacing: 5) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.14))
+
+                        Capsule()
+                            .fill(lightingStyleFill(style))
+                            .frame(
+                                width: geometry.size.width
+                                    * lightingPreviewFillFraction(style)
+                            )
+                            .opacity(
+                                style == .glow
+                                    ? 0.3 + 0.7 * glowPreviewLevel
+                                    : 1
+                            )
+                            .shadow(
+                                color: lightingStyleGlow(style).opacity(
+                                    style == .glow
+                                        ? 0.55 + 0.45 * glowPreviewLevel
+                                        : 1
+                                ),
+                                radius: style == .glow ? 9 : 0
+                            )
+                            .shadow(
+                                color: style == .glow
+                                    ? Color.white.opacity(
+                                        0.45 + 0.4 * glowPreviewLevel
+                                    )
+                                    : .clear,
+                                radius: 2
+                            )
+                    }
+                    .frame(width: geometry.size.width, height: 5)
+                    .position(
+                        x: geometry.size.width / 2,
+                        y: geometry.size.height / 2
+                    )
+                }
+                .frame(height: 38)
+                .padding(.horizontal, 13)
+
+                Text(style.displayName)
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 4)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.14)
+                    : Color.primary.opacity(0.035),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(
+                        isSelected
+                            ? Color.accentColor.opacity(0.72)
+                            : Color.primary.opacity(0.08),
+                        lineWidth: isSelected ? 1.2 : 0.8
+                    )
+            }
+            .contentShape(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(style.displayName)
+        .accessibilityLabel("灯光样式 \(style.displayName)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func lightingStyleFill(_ style: LightingHUDStyle) -> AnyShapeStyle {
+        switch style {
+        case .white:
+            return AnyShapeStyle(Color.white)
+        case .accent:
+            return AnyShapeStyle(Color(red: 1.0, green: 0.88, blue: 0.56))
+        case .glow:
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.10),
+                        Color.white.opacity(0.60),
+                        Color.white
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+        }
+    }
+
+    private func lightingPreviewFillFraction(
+        _ style: LightingHUDStyle
+    ) -> CGFloat {
+        switch style {
+        case .white, .accent:
+            return 0.69
+        case .glow:
+            return glowPreviewLevel
+        }
+    }
+
+    private func lightingStyleGlow(_ style: LightingHUDStyle) -> Color {
+        style == .glow
+            ? Color.white.opacity(0.80)
+            : .clear
+    }
+
+    private func lightingSpeedButton(_ speed: SoundHUDSpeed) -> some View {
+        let isSelected = selectedLightingSpeed == speed
+
+        return Button {
+            lightingHUDSpeedRaw = speed.rawValue
+        } label: {
+            VStack(spacing: 5) {
+                Image(systemName: speed.systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+
+                Text(speed.displayName)
+                    .font(.system(size: 9.5, weight: .medium))
+            }
+            .foregroundStyle(
+                isSelected ? Color.accentColor : Color.secondary
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.14)
+                    : Color.primary.opacity(0.035),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(
+                        isSelected
+                            ? Color.accentColor.opacity(0.72)
+                            : Color.primary.opacity(0.08),
+                        lineWidth: isSelected ? 1.2 : 0.8
+                    )
+            }
+            .contentShape(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(speed.displayName)
+        .accessibilityLabel("灯光动画速度 \(speed.displayName)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func soundStyleButton(_ style: SoundHUDStyle) -> some View {
+        let isSelected = selectedSoundStyle == style
+
+        return Button {
+            soundHUDStyleRaw = style.rawValue
+        } label: {
+            VStack(spacing: 5) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.14))
+
+                        Capsule()
+                            .fill(soundStyleFill(style))
+                            .frame(
+                                width: geometry.size.width
+                                    * soundPreviewFillFraction(style)
+                            )
+                            .shadow(
+                                color: soundStyleGlow(style),
+                                radius: style == .decibel ? 5 : 0
+                            )
+                    }
+                    .frame(width: geometry.size.width, height: 5)
+                    .position(
+                        x: geometry.size.width / 2,
+                        y: geometry.size.height / 2
+                    )
+                }
+                .frame(height: 38)
+                .padding(.horizontal, 13)
+
+                Text(style.displayName)
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 4)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.14)
+                    : Color.primary.opacity(0.035),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(
+                        isSelected
+                            ? Color.accentColor.opacity(0.72)
+                            : Color.primary.opacity(0.08),
+                        lineWidth: isSelected ? 1.2 : 0.8
+                    )
+            }
+            .contentShape(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(style.displayName)
+        .accessibilityLabel("声音样式 \(style.displayName)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func soundStyleFill(_ style: SoundHUDStyle) -> AnyShapeStyle {
+        switch style {
+        case .white:
+            return AnyShapeStyle(Color.white)
+        case .accent:
+            return AnyShapeStyle(Color.accentColor)
+        case .decibel:
+            return AnyShapeStyle(decibelPreviewColor)
+        }
+    }
+
+    private func soundStyleGlow(_ style: SoundHUDStyle) -> Color {
+        style == .decibel
+            ? decibelPreviewColor.opacity(0.55)
+            : .clear
+    }
+
+    private var decibelPreviewColor: Color {
+        SoundHUDAppearance.decibelColor(for: decibelPreviewLevel)
+    }
+
+    private func soundPreviewFillFraction(
+        _ style: SoundHUDStyle
+    ) -> CGFloat {
+        switch style {
+        case .white, .accent:
+            return 0.69
+        case .decibel:
+            return decibelPreviewLevel
+        }
+    }
+
+    private func soundSpeedButton(_ speed: SoundHUDSpeed) -> some View {
+        let isSelected = selectedSoundSpeed == speed
+
+        return Button {
+            soundHUDSpeedRaw = speed.rawValue
+        } label: {
+            VStack(spacing: 5) {
+                Image(systemName: speed.systemImage)
+                    .font(.system(size: 13, weight: .semibold))
+
+                Text(speed.displayName)
+                    .font(.system(size: 9.5, weight: .medium))
+            }
+            .foregroundStyle(
+                isSelected ? Color.accentColor : Color.secondary
+            )
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.14)
+                    : Color.primary.opacity(0.035),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(
+                        isSelected
+                            ? Color.accentColor.opacity(0.72)
+                            : Color.primary.opacity(0.08),
+                        lineWidth: isSelected ? 1.2 : 0.8
+                    )
+            }
+            .contentShape(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(speed.displayName)
+        .accessibilityLabel("动画速度 \(speed.displayName)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func soundContentButton(_ content: SoundHUDContent) -> some View {
+        let isSelected = selectedSoundContent == content
+
+        return Button {
+            soundHUDContentRaw = content.rawValue
+        } label: {
+            soundContentIcon(content)
+                .frame(height: 38)
+                .padding(4)
+                .frame(maxWidth: .infinity)
+                .background(
+                    isSelected
+                        ? Color.accentColor.opacity(0.14)
+                        : Color.primary.opacity(0.035),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(
+                            isSelected
+                                ? Color.accentColor.opacity(0.72)
+                                : Color.primary.opacity(0.08),
+                            lineWidth: isSelected ? 1.2 : 0.8
+                        )
+                }
+                .contentShape(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(content.displayName)
+        .accessibilityLabel(content.displayName)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private func soundContentIcon(_ content: SoundHUDContent) -> some View {
+        if content == .symbol {
+            SoundSymbolCarousel(size: 22, index: soundIconPreviewIndex)
+        } else {
+            SoundDeviceIconCarousel(size: 32, index: soundIconPreviewIndex)
+        }
+    }
+
+    private func soundToggleRow(
+        title: String,
+        isOn: Binding<Bool>
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+
+            Spacer()
+
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .tint(.accentColor)
         }
     }
 
@@ -683,25 +1413,17 @@ struct SettingsView: View {
 
     private var menuBarIconSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                sectionHeader(
-                    title: "菜单栏图标",
-                    systemImage: "menubar.rectangle"
-                )
-
-                Spacer()
-
-                Text(selectedMenuBarIconStyle.displayName)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
+            sectionHeader(
+                title: "菜单栏图标",
+                systemImage: "menubar.rectangle"
+            )
 
             LazyVGrid(
                 columns: Array(
-                    repeating: GridItem(.flexible(), spacing: 8),
-                    count: 3
+                    repeating: GridItem(.flexible(), spacing: 6),
+                    count: 7
                 ),
-                spacing: 8
+                spacing: 6
             ) {
                 ForEach(MenuBarIconStyle.allCases) { style in
                     menuBarIconButton(style)
@@ -721,39 +1443,29 @@ struct SettingsView: View {
         return Button {
             menuBarIconStyleRaw = style.rawValue
         } label: {
-            VStack(spacing: 7) {
-                Image(systemName: style.systemImage)
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(
-                        isSelected ? Color.accentColor : Color.primary.opacity(0.72)
-                    )
-                    .frame(height: 22)
-
-                Text(style.displayName)
-                    .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            .background(
-                isSelected
-                    ? Color.accentColor.opacity(0.14)
-                    : Color.primary.opacity(0.035),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(
-                        isSelected
-                            ? Color.accentColor.opacity(0.62)
-                            : Color.primary.opacity(0.08),
-                        lineWidth: isSelected ? 1.2 : 0.8
-                    )
-            }
-            .contentShape(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
+            menuBarIconGlyph(style)
+                .foregroundStyle(
+                    isSelected ? Color.accentColor : Color.primary.opacity(0.72)
+                )
+                .frame(width: 48, height: 48)
+                .background(
+                    isSelected
+                        ? Color.accentColor.opacity(0.14)
+                        : Color.primary.opacity(0.035),
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(
+                            isSelected
+                                ? Color.accentColor.opacity(0.62)
+                                : Color.primary.opacity(0.08),
+                            lineWidth: isSelected ? 1.2 : 0.8
+                        )
+                }
+                .contentShape(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                )
         }
         .buttonStyle(.plain)
         .help(style.displayName)
@@ -761,8 +1473,23 @@ struct SettingsView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private var selectedMenuBarIconStyle: MenuBarIconStyle {
-        MenuBarIconStyle(rawValue: menuBarIconStyleRaw) ?? .note
+    @ViewBuilder
+    private func menuBarIconGlyph(
+        _ style: MenuBarIconStyle
+    ) -> some View {
+        if style == .notch {
+            Image(nsImage: MenuBarIconRenderer.notchIcon)
+                .resizable()
+                .renderingMode(.template)
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: 20, height: 20)
+                .frame(height: 22)
+        } else {
+            Image(systemName: style.systemImage ?? "music.note")
+                .font(.system(size: 19, weight: .semibold))
+                .frame(height: 22)
+        }
     }
 
     private var applicationIconSection: some View {
@@ -783,7 +1510,7 @@ struct SettingsView: View {
             LazyVGrid(
                 columns: Array(
                     repeating: GridItem(.flexible(), spacing: 8),
-                    count: 3
+                    count: 5
                 ),
                 spacing: 8
             ) {
@@ -792,7 +1519,7 @@ struct SettingsView: View {
                 }
             }
 
-            Text("选择后运行中的应用图标会立即更新；“光谱”为默认图标。访达中的应用文件图标由安装包固定，不会随此项变化。")
+            Text("选择后运行中的应用图标会立即更新；访达中的应用文件图标由安装包固定，不会随此项变化。")
                 .settingsCaption()
         }
     }
@@ -805,12 +1532,12 @@ struct SettingsView: View {
         return Button {
             applicationIconStyleRaw = style.rawValue
         } label: {
-            VStack(spacing: 7) {
+            VStack(spacing: 5) {
                 Image(style.assetName)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 36, height: 36)
                     .shadow(
                         color: .black.opacity(0.22),
                         radius: 4,
@@ -818,12 +1545,11 @@ struct SettingsView: View {
                     )
 
                 Text(style.displayName)
-                    .font(.system(size: 10.5, weight: .medium))
+                    .font(.system(size: 9.5, weight: .medium))
                     .foregroundStyle(isSelected ? .primary : .secondary)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
+            .frame(width: 70, height: 70)
             .background(
                 isSelected
                     ? Color.accentColor.opacity(0.14)
@@ -850,100 +1576,7 @@ struct SettingsView: View {
     }
 
     private var selectedApplicationIconStyle: ApplicationIconStyle {
-        ApplicationIconStyle(rawValue: applicationIconStyleRaw) ?? .spectrum
-    }
-
-    private var airPodsModelSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                sectionHeader(
-                    title: "耳机模型",
-                    systemImage: "airpods"
-                )
-
-                Spacer()
-
-                Text(selectedAirPodsModelSelection.displayName)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-
-            LazyVGrid(
-                columns: Array(
-                    repeating: GridItem(.flexible(), spacing: 8),
-                    count: 2
-                ),
-                spacing: 8
-            ) {
-                ForEach(AirPodsModelSelection.allCases) { selection in
-                    airPodsModelButton(selection)
-                }
-            }
-
-            Text("自动识别会读取蓝牙产品 ID；手动选择会覆盖识别结果。")
-                .settingsCaption()
-        }
-    }
-
-    private var selectedAirPodsModelSelection: AirPodsModelSelection {
-        AirPodsModelSelection(rawValue: airPodsModelSelectionRaw)
-            ?? .automatic
-    }
-
-    private func airPodsModelButton(
-        _ selection: AirPodsModelSelection
-    ) -> some View {
-        let isSelected = selection == selectedAirPodsModelSelection
-
-        return Button {
-            airPodsModelSelectionRaw = selection.rawValue
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: selection.systemImage)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(
-                        isSelected ? Color.accentColor : .secondary
-                    )
-                    .frame(width: 24)
-
-                Text(selection.displayName)
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
-                }
-            }
-            .padding(.horizontal, 11)
-            .frame(maxWidth: .infinity, minHeight: 42)
-            .background(
-                isSelected
-                    ? Color.accentColor.opacity(0.14)
-                    : Color.primary.opacity(0.035),
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(
-                        isSelected
-                            ? Color.accentColor.opacity(0.62)
-                            : Color.primary.opacity(0.08),
-                        lineWidth: isSelected ? 1.2 : 0.8
-                    )
-            }
-            .contentShape(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-            )
-        }
-        .buttonStyle(.plain)
-        .help(selection.displayName)
-        .accessibilityLabel("耳机模型 \(selection.displayName)")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        ApplicationIconStyle(rawValue: applicationIconStyleRaw) ?? .ocean
     }
 
     private var notchBehaviorSection: some View {
@@ -1271,7 +1904,7 @@ struct SettingsView: View {
     }
 
     private var selectedProgressTrackStyle: ProgressTrackStyle {
-        ProgressTrackStyle(rawValue: progressTrackStyleRaw) ?? .classic
+        ProgressTrackStyle(rawValue: progressTrackStyleRaw) ?? .softAurora
     }
 
     private var progressTrackAccent: Color {
@@ -1305,6 +1938,13 @@ struct SettingsView: View {
                     watchFaceButton(style)
                 }
             }
+
+            settingToggle(
+                title: "在音乐界面显示",
+                detail: "关闭后音乐播放界面只保留播放内容",
+                systemImage: "music.note",
+                isOn: $showsWatchFaceInMusic
+            )
 
             Divider()
                 .opacity(0.5)
@@ -2333,7 +2973,7 @@ struct SettingsView: View {
     }
 
     private var selectedSystemHUDStyle: SystemHUDStyle {
-        SystemHUDStyle(rawValue: systemHUDStyleRaw) ?? .island
+        SystemHUDStyle(rawValue: systemHUDStyleRaw) ?? .customOSD
     }
 
     private func systemHUDStyleButton(_ style: SystemHUDStyle) -> some View {
@@ -2377,30 +3017,42 @@ struct SettingsView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private func stepRow(
+    private func stepSlider(
         title: String,
         value: Binding<Int>
     ) -> some View {
-        HStack(spacing: 10) {
-            Text(title)
-                .font(.system(size: 11.5, weight: .medium))
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 11.5, weight: .medium))
 
-            Spacer()
+                Spacer()
 
-            Text("\(value.wrappedValue)%")
-                .font(.system(size: 11.5, weight: .semibold))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 28, alignment: .trailing)
+                Text("\(value.wrappedValue)%")
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .monospacedDigit()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.primary.opacity(0.07), in: Capsule())
+            }
 
-            Stepper(
-                "",
-                value: value,
+            Slider(
+                value: Binding(
+                    get: { Double(value.wrappedValue) },
+                    set: { value.wrappedValue = Int($0.rounded()) }
+                ),
                 in: 1...20,
                 step: 1
             )
-            .labelsHidden()
-            .controlSize(.mini)
+            .tint(.accentColor)
+
+            HStack {
+                Text("1%")
+                Spacer()
+                Text("20%")
+            }
+            .font(.system(size: 9.5, weight: .medium))
+            .foregroundStyle(.tertiary)
         }
     }
 
@@ -2563,6 +3215,452 @@ struct SettingsView: View {
     private var versionString: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0"
     }
+}
+
+private struct SparklesText: View {
+    let text: String
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sparkles: [Sparkle] = []
+
+    private let colors = [
+        Color(red: 0.62, green: 0.48, blue: 1.00),
+        Color(red: 1.00, green: 0.55, blue: 0.73)
+    ]
+
+    var body: some View {
+        Text(text)
+            .overlay {
+                if !reduceMotion {
+                    GeometryReader { geometry in
+                        ForEach(sparkles) { sparkle in
+                            SparkleStar(sparkle: sparkle)
+                                .position(
+                                    x: geometry.size.width * sparkle.x,
+                                    y: geometry.size.height * sparkle.y
+                                )
+                        }
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+            }
+            .onAppear {
+                guard sparkles.isEmpty else { return }
+                sparkles = (0..<10).map { _ in
+                    Sparkle(
+                        x: .random(in: 0...1),
+                        y: .random(in: 0...1),
+                        color: colors.randomElement() ?? .white,
+                        delay: .random(in: 0...2),
+                        scale: .random(in: 0.3...1.3)
+                    )
+                }
+            }
+    }
+}
+
+private struct Sparkle: Identifiable {
+    let id = UUID()
+    let x: CGFloat
+    let y: CGFloat
+    let color: Color
+    let delay: Double
+    let scale: CGFloat
+}
+
+private struct SparkleStar: View {
+    let sparkle: Sparkle
+
+    @State private var isVisible = false
+
+    var body: some View {
+        SparkleShape()
+            .fill(sparkle.color)
+            .frame(width: 13, height: 13)
+            .scaleEffect(isVisible ? sparkle.scale : 0.001)
+            .opacity(isVisible ? 1 : 0)
+            .rotationEffect(.degrees(isVisible ? 150 : 75))
+            .animation(
+                .easeInOut(duration: 0.4)
+                    .repeatForever(autoreverses: true)
+                    .delay(sparkle.delay),
+                value: isVisible
+            )
+            .onAppear { isVisible = true }
+    }
+}
+
+private struct SparkleShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let scaleX = rect.width / 21
+        let scaleY = rect.height / 21
+
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(
+                x: rect.minX + x * scaleX,
+                y: rect.minY + y * scaleY
+            )
+        }
+
+        var path = Path()
+        path.move(to: point(9.82531, 0.843845))
+        path.addCurve(
+            to: point(11.1746, 0.843845),
+            control1: point(10.0553, 0.215178),
+            control2: point(10.9446, 0.215178)
+        )
+        path.addLine(to: point(11.8618, 2.72026))
+        path.addCurve(
+            to: point(13.5, 7.5),
+            control1: point(12.4006, 4.19229),
+            control2: point(12.3916, 6.39157)
+        )
+        path.addCurve(
+            to: point(18.2797, 9.13822),
+            control1: point(14.6084, 8.60843),
+            control2: point(16.8077, 8.59935)
+        )
+        path.addLine(to: point(20.1561, 9.82534))
+        path.addCurve(
+            to: point(20.1561, 11.1747),
+            control1: point(20.7858, 10.0553),
+            control2: point(20.7858, 10.9447)
+        )
+        path.addLine(to: point(18.2797, 11.8618))
+        path.addCurve(
+            to: point(13.5, 13.5),
+            control1: point(16.8077, 12.4007),
+            control2: point(14.6084, 12.3916)
+        )
+        path.addCurve(
+            to: point(11.8618, 18.2798),
+            control1: point(12.3916, 14.6084),
+            control2: point(12.4006, 16.8077)
+        )
+        path.addLine(to: point(11.1746, 20.1562))
+        path.addCurve(
+            to: point(9.82531, 20.1562),
+            control1: point(10.9446, 20.7858),
+            control2: point(10.0553, 20.7858)
+        )
+        path.addLine(to: point(9.13819, 18.2798))
+        path.addCurve(
+            to: point(7.5, 13.5),
+            control1: point(8.59932, 16.8077),
+            control2: point(8.60843, 14.6084)
+        )
+        path.addCurve(
+            to: point(2.72023, 11.8618),
+            control1: point(6.39157, 12.3916),
+            control2: point(4.19225, 12.4007)
+        )
+        path.addLine(to: point(0.843814, 11.1747))
+        path.addCurve(
+            to: point(0.843814, 9.82534),
+            control1: point(0.215148, 10.9447),
+            control2: point(0.215148, 10.0553)
+        )
+        path.addLine(to: point(2.72023, 9.13822))
+        path.addCurve(
+            to: point(7.5, 7.5),
+            control1: point(4.19225, 8.59935),
+            control2: point(6.39157, 8.60843)
+        )
+        path.addCurve(
+            to: point(9.13819, 2.72026),
+            control1: point(8.60843, 6.39157),
+            control2: point(8.59932, 4.19229)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct ConfettiLayer: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if reduceMotion {
+            ConfettiCanvas(time: 0, frozen: true)
+        } else {
+            TimelineView(.animation) { timeline in
+                ConfettiCanvas(
+                    time: timeline.date.timeIntervalSinceReferenceDate,
+                    frozen: false
+                )
+            }
+        }
+    }
+}
+
+private struct ConfettiCanvas: View {
+    let time: TimeInterval
+    let frozen: Bool
+
+    private let particleCount = 44
+
+    private let palette = [
+        Color(red: 1.00, green: 0.42, blue: 0.34),
+        Color(red: 1.00, green: 0.55, blue: 0.73),
+        Color(red: 0.62, green: 0.48, blue: 1.00),
+        Color(red: 1.00, green: 0.80, blue: 0.45),
+        Color(red: 0.45, green: 0.80, blue: 0.70),
+        Color(red: 0.42, green: 0.80, blue: 0.62)
+    ]
+
+    var body: some View {
+        Canvas { context, size in
+            guard size.width > 120 else { return }
+            for index in 0..<particleCount {
+                drawFlake(in: &context, size: size, index: index)
+            }
+        }
+    }
+
+    private func drawFlake(
+        in context: inout GraphicsContext,
+        size: CGSize,
+        index: Int
+    ) {
+        let seed = Double(unitRandom(index, 1))
+        let startX =
+            Double(size.width) * (0.05 + 0.9 * Double(unitRandom(index, 2)))
+        let startY = 50 + 45 * Double(unitRandom(index, 3))
+        let entrySpeed = 70 * Double(unitRandom(index, 4))
+        let terminalSpeed = 140 + 100 * Double(unitRandom(index, 5))
+        let drag = 2.5 + 2.5 * Double(unitRandom(index, 6))
+        let swaySpeed = 0.7 + 1.7 * Double(unitRandom(index, 7))
+        let swayAmplitude = 7 + 20 * Double(unitRandom(index, 8))
+        let restDuration = 1.2 + 1.6 * Double(unitRandom(index, 9))
+        let gapDuration = 0.15 + 0.9 * Double(unitRandom(index, 10))
+        let floorY =
+            Double(size.height) - 14 - 40 * Double(unitRandom(index, 11))
+        let baseRotation = 360 * Double(unitRandom(index, 12))
+        let driftSpeed = (Double(unitRandom(index, 13)) - 0.5) * 80
+        let tumbleSpeed = 1.2 + 3.0 * Double(unitRandom(index, 14))
+        let tumbleAmplitude = 20 + 150 * Double(unitRandom(index, 15))
+        let flipSpeed = 1.5 + 4.0 * Double(unitRandom(index, 16))
+        let flipPhase = 6.28 * Double(unitRandom(index, 17))
+        let driftDirection = Double(unitRandom(index, 18)) - 0.5
+
+        func fallY(at moment: Double) -> Double {
+            startY + terminalSpeed * moment
+                + (entrySpeed - terminalSpeed) * (1 - exp(-drag * moment))
+                    / drag
+        }
+
+        var low = 0.0
+        var high = 10.0
+        for _ in 0..<28 {
+            let mid = (low + high) / 2
+            if fallY(at: mid) < floorY {
+                low = mid
+            } else {
+                high = mid
+            }
+        }
+        let landingTime = (low + high) / 2
+        let period = landingTime + restDuration + gapDuration
+        let phase = period * Double(unitRandom(index, 19))
+        let elapsed = frozen
+            ? landingTime * (0.2 + 0.6 * Double(unitRandom(index, 20)))
+            : (time + phase).truncatingRemainder(dividingBy: period)
+        guard elapsed < landingTime + restDuration else { return }
+
+        func sway(at moment: Double) -> Double {
+            let primary =
+                sin(moment * swaySpeed * 2 * .pi + seed * 6.28)
+                * swayAmplitude
+            let secondary =
+                sin(moment * swaySpeed * 3.6 * .pi + seed * 3.1)
+                * swayAmplitude * 0.3
+            return (primary + secondary) * min(1, moment / 1.2)
+        }
+
+        func rotation(at moment: Double) -> Double {
+            baseRotation + driftSpeed * moment
+                + sin(moment * tumbleSpeed + seed * 6.28) * tumbleAmplitude
+        }
+
+        func paperFlip(at moment: Double) -> Double {
+            0.12 + 0.88 * abs(cos(moment * flipSpeed + flipPhase))
+        }
+
+        let x: Double
+        let y: Double
+        let flakeRotation: Double
+        let flakeFlip: Double
+        let opacity: Double
+
+        if elapsed < landingTime {
+            y = fallY(at: elapsed)
+            x =
+                startX + sway(at: elapsed)
+                + driftDirection * 24 * elapsed
+            flakeRotation = rotation(at: elapsed)
+            flakeFlip = paperFlip(at: elapsed)
+            opacity = min(1, elapsed / 0.35)
+        } else {
+            let restTime = elapsed - landingTime
+            let fadeStart = restDuration * 0.55
+            let bounce =
+                max(0, sin(restTime * 10)) * 2.5 * exp(-restTime * 6)
+            x =
+                startX + sway(at: landingTime)
+                + driftDirection * 24 * landingTime
+            y = floorY - bounce
+            flakeRotation = rotation(at: landingTime)
+            flakeFlip = 1
+            if restTime < fadeStart {
+                opacity = 1
+            } else {
+                let fadeProgress =
+                    (restTime - fadeStart) / (restDuration - fadeStart)
+                opacity =
+                    1 - Double(smoothstep(0, 1, CGFloat(fadeProgress)))
+            }
+        }
+
+        guard opacity > 0.01 else { return }
+
+        let color = palette[index % palette.count]
+        let width = 4 + 3 * unitRandom(index, 21)
+        let height = 7 + 7 * unitRandom(index, 22)
+
+        var particle = context
+        particle.translateBy(x: CGFloat(x), y: CGFloat(y))
+        particle.rotate(by: .degrees(flakeRotation))
+        var flake = particle
+        flake.scaleBy(x: 1, y: CGFloat(flakeFlip))
+        flake.fill(
+            Path(
+                roundedRect: CGRect(
+                    x: -width / 2,
+                    y: -height / 2,
+                    width: width,
+                    height: height
+                ),
+                cornerRadius: 1.2
+            ),
+            with: .color(color.opacity(opacity))
+        )
+    }
+
+    private func unitRandom(_ index: Int, _ salt: Int) -> CGFloat {
+        let value =
+            sin(Double(index) * 12.9898 + Double(salt) * 78.233)
+            * 43758.5453
+        return CGFloat(value - floor(value))
+    }
+
+    private func smoothstep(
+        _ edge0: CGFloat,
+        _ edge1: CGFloat,
+        _ value: CGFloat
+    ) -> CGFloat {
+        let t = min(max((value - edge0) / (edge1 - edge0), 0), 1)
+        return t * t * (3 - 2 * t)
+    }
+}
+
+private struct SoundDeviceIconCarousel: View {
+    let size: CGFloat
+    let index: Int
+
+    private var models: [AirPodsModelKind] {
+        let allModels: [AirPodsModelKind] = [
+            .airPods,
+            .airPodsPro,
+            .airPodsMax
+        ]
+        guard let preferred = SoundOutputDevice.preferredAirPodsModel(),
+              allModels.contains(preferred) else {
+            return allModels
+        }
+        return [preferred] + allModels.filter { $0 != preferred }
+    }
+
+    var body: some View {
+        ZStack {
+            if !models.isEmpty {
+                let model = models[index % models.count]
+                AirPods3DView(model: model)
+                    .id(model)
+                    .frame(width: size, height: size)
+                    .transition(
+                        .asymmetric(
+                            insertion: .scale(scale: 0.74, anchor: .center)
+                                .combined(with: .opacity),
+                            removal: .scale(scale: 0.86, anchor: .center)
+                                .combined(with: .opacity)
+                        )
+                    )
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipped()
+        .animation(
+            .spring(
+                response: 0.9,
+                dampingFraction: 0.82,
+                blendDuration: 0
+            ),
+            value: index
+        )
+    }
+}
+
+private struct SoundSymbolCarousel: View {
+    let size: CGFloat
+    let index: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var displayedIndex = 0
+    @State private var isCollapsed = false
+
+    private var symbols: [String] {
+        let models: [AirPodsModelKind] = [
+            .airPods,
+            .airPodsPro,
+            .airPodsMax
+        ]
+        let preferred = SoundOutputDevice.preferredAirPodsModel()
+        let ordered = preferred.map { first in
+            [first] + models.filter { $0 != first }
+        } ?? models
+        return ordered.map(\.systemImage)
+    }
+
+    var body: some View {
+        Image(systemName: symbols[displayedIndex % symbols.count])
+            .font(.system(size: size, weight: .medium))
+            .foregroundStyle(.white)
+            .scaleEffect(isCollapsed ? 0.01 : 1)
+            .frame(width: 32, height: 32)
+            .accessibilityHidden(true)
+            .onAppear {
+                displayedIndex = index
+            }
+            .onChange(of: index) { _, newIndex in
+                guard !reduceMotion else {
+                    displayedIndex = newIndex
+                    return
+                }
+                withAnimation(.easeIn(duration: 0.18)) {
+                    isCollapsed = true
+                }
+                Task {
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                    displayedIndex = newIndex
+                    withAnimation(.easeOut(duration: 0.24)) {
+                        isCollapsed = false
+                    }
+                }
+            }
+    }
+
 }
 
 private struct WatchFaceCropEditorState: Identifiable {
@@ -2945,94 +4043,168 @@ private struct SettingsWindowGlassBackground: View {
 private struct SystemHUDPreview: View {
     let style: SystemHUDStyle
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var level = 0.34
+
+    private var percentage: Int {
+        Int((level * 100).rounded())
+    }
+
+    private var symbolName: String {
+        if level < 0.34 {
+            return "speaker.wave.1.fill"
+        }
+        if level < 0.67 {
+            return "speaker.wave.2.fill"
+        }
+        return "speaker.wave.3.fill"
+    }
+
     var body: some View {
         ZStack {
             switch style {
             case .island:
-                Capsule()
-                    .fill(Color.black.opacity(0.92))
-                    .frame(width: 52, height: 18)
-
-                HStack(spacing: 4) {
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 7, weight: .bold))
-                    Capsule()
-                        .fill(Color.white.opacity(0.24))
-                        .frame(width: 22, height: 3)
-                        .overlay(alignment: .leading) {
-                            Capsule()
-                                .fill(.white.opacity(0.88))
-                                .frame(width: 14, height: 3)
-                        }
-                }
-                .foregroundStyle(.white.opacity(0.86))
-
+                island
             case .customOSD:
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Color.black.opacity(0.86))
-                    .frame(width: 42, height: 34)
-
-                HStack(spacing: 4) {
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 8, weight: .bold))
-
-                    VStack(spacing: 3) {
-                        Capsule()
-                            .fill(.white.opacity(0.22))
-                            .frame(width: 17, height: 2.5)
-                            .overlay(alignment: .leading) {
-                                Capsule()
-                                    .fill(.white.opacity(0.88))
-                                    .frame(width: 10, height: 2.5)
-                            }
-                        Capsule()
-                            .fill(.white.opacity(0.22))
-                            .frame(width: 17, height: 2.5)
-                    }
-                }
-                .foregroundStyle(.white.opacity(0.86))
-
-            case .vertical:
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(Color.black.opacity(0.88))
-                    .frame(width: 18, height: 43)
-
-                VStack(spacing: 3) {
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 6.5, weight: .bold))
-
-                    ZStack(alignment: .bottom) {
-                        Capsule()
-                            .fill(.white.opacity(0.20))
-
-                        Capsule()
-                            .fill(.white.opacity(0.88))
-                            .frame(height: 13)
-                    }
-                    .frame(width: 3, height: 22)
-                }
-                .foregroundStyle(.white.opacity(0.88))
-
-            case .circular:
-                Circle()
-                    .fill(Color.black.opacity(0.66))
-                    .frame(width: 38, height: 38)
-
-                Circle()
-                    .trim(from: 0, to: 0.68)
-                    .stroke(
-                        Color.accentColor,
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .frame(width: 33, height: 33)
-
-                Image(systemName: "speaker.wave.2.fill")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
+                customOSD
             }
         }
         .frame(maxWidth: .infinity)
+        .task(id: reduceMotion) {
+            guard !reduceMotion else { return }
+            let levels: [Double] = [0.34, 0.58, 0.82, 0.66, 0.95, 0.42]
+            while !Task.isCancelled {
+                for value in levels {
+                    guard !Task.isCancelled else { return }
+                    withAnimation(
+                        .spring(response: 0.32, dampingFraction: 0.84)
+                    ) {
+                        level = value
+                    }
+                    try? await Task.sleep(nanoseconds: 900_000_000)
+                }
+            }
+        }
+    }
+
+    private var island: some View {
+        HStack(spacing: 0) {
+            HStack(spacing: 4) {
+                Image(systemName: symbolName)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .frame(width: 14, alignment: .leading)
+                    .transaction { $0.animation = nil }
+
+                Text("音量")
+                    .font(
+                        .system(
+                            size: 7,
+                            weight: .semibold,
+                            design: .rounded
+                        )
+                    )
+                    .foregroundStyle(.white.opacity(0.92))
+            }
+
+            Spacer(minLength: 10)
+
+            HStack(spacing: 4) {
+                levelBar(height: 3)
+                    .frame(width: 34)
+
+                Text("\(percentage)")
+                    .font(
+                        .system(
+                            size: 7,
+                            weight: .bold,
+                            design: .rounded
+                        )
+                    )
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .contentTransition(.numericText())
+                    .frame(width: 13, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 9)
+        .frame(width: 170, height: 22)
+        .background(
+            Color.black.opacity(0.92),
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 7,
+                bottomLeadingRadius: 13,
+                bottomTrailingRadius: 13,
+                topTrailingRadius: 7,
+                style: .continuous
+            )
+        )
+    }
+
+    private var customOSD: some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbolName)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30, alignment: .leading)
+                .transaction { $0.animation = nil }
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 3) {
+                    Text("音量")
+                        .font(
+                            .system(
+                                size: 8,
+                                weight: .semibold,
+                                design: .rounded
+                            )
+                        )
+                        .foregroundStyle(.white)
+
+                    Spacer(minLength: 0)
+
+                    Text("\(percentage)%")
+                        .font(
+                            .system(
+                                size: 9,
+                                weight: .bold,
+                                design: .rounded
+                            )
+                        )
+                        .monospacedDigit()
+                        .foregroundStyle(.white)
+                        .contentTransition(.numericText())
+                }
+
+                levelBar(height: 4.5)
+            }
+        }
+        .padding(.leading, 6)
+        .padding(.trailing, 9)
+        .frame(width: 108, height: 48)
+        .background(
+            Color.black.opacity(0.86),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+    }
+
+    private func levelBar(height: CGFloat) -> some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.white.opacity(0.22))
+
+                Capsule()
+                    .fill(.white.opacity(0.9))
+                    .frame(
+                        width: max(
+                            height,
+                            proxy.size.width * level
+                        )
+                    )
+            }
+        }
+        .frame(height: height)
     }
 }
 

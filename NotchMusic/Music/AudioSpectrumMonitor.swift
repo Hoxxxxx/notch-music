@@ -50,7 +50,11 @@ final class AudioSpectrumMonitor: ObservableObject {
     }
 
     var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: MusicSpectrumSettings.enabled)
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: MusicSpectrumSettings.enabled) != nil else {
+            return true
+        }
+        return defaults.bool(forKey: MusicSpectrumSettings.enabled)
     }
 
     private var capture: AppleMusicTapCapture?

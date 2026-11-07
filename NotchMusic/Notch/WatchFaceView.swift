@@ -68,6 +68,10 @@ enum WatchFaceClockSettings {
     static let uses24HourKey = "NotchMusic.watchFaceUses24Hour"
 }
 
+enum WatchFaceDisplaySettings {
+    static let showsInMusicKey = "NotchMusic.watchFaceShowsInMusic"
+}
+
 enum WatchFaceSurfaceMetrics {
     static let cornerRadiusRatio: CGFloat = 24.0 / 88.0
 }
@@ -248,7 +252,7 @@ struct WatchFaceView: View {
     var size: CGFloat = 88
 
     @AppStorage(WatchFaceClockSettings.uses24HourKey)
-    private var uses24Hour = false
+    private var uses24Hour = true
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in

@@ -6,6 +6,7 @@ import SwiftUI
 enum MenuBarIconStyle: String, CaseIterable, Identifiable {
     static let storageKey = "NotchMusic.menuBarIconStyle"
 
+    case notch = "notch"
     case note = "music.note"
     case playlist = "music.note.list"
     case notes = "music.quarternote.3"
@@ -14,10 +15,20 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
     case record = "opticaldisc.fill"
 
     var id: String { rawValue }
-    var systemImage: String { rawValue }
+
+    var systemImage: String? {
+        switch self {
+        case .notch:
+            return nil
+        default:
+            return rawValue
+        }
+    }
 
     var displayName: String {
         switch self {
+        case .notch:
+            return "刘海"
         case .note:
             return "音符"
         case .playlist:
@@ -34,50 +45,176 @@ enum MenuBarIconStyle: String, CaseIterable, Identifiable {
     }
 }
 
+enum MenuBarIconRenderer {
+    static let notchIcon: NSImage = makeNotchIcon()
+
+    static func image(for style: MenuBarIconStyle) -> NSImage? {
+        if style == .notch {
+            return notchIcon
+        }
+
+        guard let systemImage = style.systemImage else { return nil }
+        let image = NSImage(
+            systemSymbolName: systemImage,
+            accessibilityDescription: "NotchMusic"
+        )
+        image?.isTemplate = true
+        return image
+    }
+
+    private static func makeNotchIcon() -> NSImage {
+        let pointSize: CGFloat = 18
+        let image = NSImage(
+            size: NSSize(width: pointSize, height: pointSize),
+            flipped: true
+        ) { rect in
+            let side = min(rect.width, rect.height)
+            let origin = CGPoint(
+                x: rect.midX - side / 2,
+                y: rect.midY - side / 2
+            )
+
+            func roundedPath(
+                _ frame: CGRect,
+                radius: CGFloat
+            ) -> NSBezierPath {
+                NSBezierPath(
+                    roundedRect: NSRect(
+                        x: origin.x + frame.minX * side,
+                        y: origin.y + frame.minY * side,
+                        width: frame.width * side,
+                        height: frame.height * side
+                    ),
+                    xRadius: radius * side,
+                    yRadius: radius * side
+                )
+            }
+
+            let ring = roundedPath(
+                CGRect(x: 0.055, y: 0.055, width: 0.89, height: 0.89),
+                radius: 0.245
+            )
+            ring.append(
+                roundedPath(
+                    CGRect(x: 0.138, y: 0.138, width: 0.724, height: 0.724),
+                    radius: 0.16
+                )
+            )
+            ring.windingRule = .evenOdd
+            NSColor.white.setFill()
+            ring.fill()
+
+            let fillFrame = CGRect(
+                x: 0.178,
+                y: 0.178,
+                width: 0.644,
+                height: 0.644
+            )
+            let fillPath = roundedPath(fillFrame, radius: 0.12)
+            if let context = NSGraphicsContext.current?.cgContext,
+               let gradient = CGGradient(
+                   colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                   colors: [
+                       NSColor.white.withAlphaComponent(0).cgColor,
+                       NSColor.white.withAlphaComponent(0.8).cgColor
+                   ] as CFArray,
+                   locations: [0, 1]
+               ) {
+                context.saveGState()
+                context.addPath(fillPath.cgPath)
+                context.clip()
+                let centerX = origin.x + fillFrame.midX * side
+                context.drawLinearGradient(
+                    gradient,
+                    start: CGPoint(
+                        x: centerX,
+                        y: origin.y + fillFrame.minY * side
+                    ),
+                    end: CGPoint(
+                        x: centerX,
+                        y: origin.y + fillFrame.maxY * side
+                    ),
+                    options: []
+                )
+                context.restoreGState()
+            }
+
+            let notch = roundedPath(
+                CGRect(x: 0.383, y: 0.178, width: 0.234, height: 0.115),
+                radius: 0.0575
+            )
+            notch.append(
+                NSBezierPath(
+                    rect: NSRect(
+                        x: origin.x + 0.383 * side,
+                        y: origin.y + 0.178 * side,
+                        width: 0.234 * side,
+                        height: 0.0575 * side
+                    )
+                )
+            )
+            NSColor.white.setFill()
+            notch.fill()
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+}
+
 enum ApplicationIconStyle: String, CaseIterable, Identifiable {
     static let storageKey = "NotchMusic.applicationIconStyle"
 
-    case spectrum
-    case coral
-    case ocean
-    case sunset
-    case mint
-    case silver
+    case violet = "violet"
+    case ocean = "ocean"
+    case sunset = "sunset"
+    case mint = "mint"
+    case rose = "rose"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .spectrum:
-            return "光谱"
-        case .coral:
-            return "珊瑚"
+        case .violet:
+            return "紫罗兰"
         case .ocean:
-            return "海洋"
+            return "海洋蓝"
         case .sunset:
-            return "日落"
+            return "日落橙"
         case .mint:
-            return "薄荷"
-        case .silver:
-            return "银色"
+            return "薄荷绿"
+        case .rose:
+            return "玫瑰粉"
         }
     }
 
     var assetName: String {
         switch self {
-        case .spectrum:
-            return "AppIconSpectrum"
-        case .coral:
-            return "AppIconCoral"
+        case .violet:
+            return "AppIconDefault"
         case .ocean:
             return "AppIconOcean"
         case .sunset:
             return "AppIconSunset"
         case .mint:
             return "AppIconMint"
-        case .silver:
-            return "AppIconSilver"
+        case .rose:
+            return "AppIconRose"
         }
+    }
+
+    static func migrateStoredValueIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard let storedValue = defaults.string(forKey: storageKey) else {
+            return
+        }
+        guard ApplicationIconStyle(rawValue: storedValue) == nil else {
+            return
+        }
+        defaults.set(
+            ApplicationIconStyle.ocean.rawValue,
+            forKey: storageKey
+        )
     }
 }
 
@@ -97,6 +234,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerBundledFonts()
         MusicControlLayoutSettings.migrateStoredValueIfNeeded()
+        SoundHUDSettings.migrateColoredVolumePreferenceIfNeeded()
+        ApplicationIconStyle.migrateStoredValueIfNeeded()
+        SystemHUDStyle.migrateRemovedStylesIfNeeded()
         NSApp.setActivationPolicy(.accessory)
         applyApplicationIcon()
 
@@ -226,7 +366,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forKey: ApplicationIconStyle.storageKey
         )
         let style = storedValue.flatMap(ApplicationIconStyle.init(rawValue:))
-            ?? .spectrum
+            ?? .ocean
 
         guard let image = NSImage(named: style.assetName) else { return }
         NSApp.applicationIconImage = image
@@ -239,13 +379,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forKey: MenuBarIconStyle.storageKey
         )
         let style = storedValue.flatMap(MenuBarIconStyle.init(rawValue:))
-            ?? .note
-        let image = NSImage(
-            systemSymbolName: style.systemImage,
-            accessibilityDescription: "NotchMusic"
-        )
-        image?.isTemplate = true
-        button.image = image
+            ?? .notch
+        button.image = MenuBarIconRenderer.image(for: style)
     }
 
     private func observePlaybackForSpectrum() {
