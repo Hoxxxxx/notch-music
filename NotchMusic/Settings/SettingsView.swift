@@ -2,6 +2,17 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+private struct SettingsPreviewsActiveKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+private extension EnvironmentValues {
+    var settingsPreviewsActive: Bool {
+        get { self[SettingsPreviewsActiveKey.self] }
+        set { self[SettingsPreviewsActiveKey.self] = newValue }
+    }
+}
+
 private enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
     case lighting
@@ -72,12 +83,15 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    @State private var selectedCategory = SettingsCategory.general
+    private static var lastSelectedCategory = SettingsCategory.general
+
+    @State private var selectedCategory = SettingsView.lastSelectedCategory
     @State private var isSidebarExpanded = false
     @State private var hoveredCategory: SettingsCategory?
     @State private var soundIconPreviewIndex = 0
     @State private var glowPreviewLevel: CGFloat = 1
     @State private var decibelPreviewLevel: CGFloat = 0.40
+    @State private var isPointerInsideSettings = false
     @State private var selectedMusicControlSlot: Int?
     @State private var watchFaceCropEditor: WatchFaceCropEditorState?
     @State private var watchFaceImageError: String?
@@ -143,6 +157,8 @@ struct SettingsView: View {
     private var notchBackgroundEnabled = true
     @AppStorage(NotchBackgroundSettings.effect)
     private var notchBackgroundEffectRaw = NotchBackgroundEffect.aurora.rawValue
+    @AppStorage(NotchBackgroundSettings.alwaysVisible)
+    private var notchBackgroundAlwaysVisible = false
     @AppStorage(NotchLayout.alwaysExpanded)
     private var keepsNotchExpanded = false
     @AppStorage(WatchFaceStyle.storageKey)
@@ -220,10 +236,29 @@ struct SettingsView: View {
                 .zIndex(2)
         }
         .frame(width: 520, height: 720)
+        .environment(
+            \.settingsPreviewsActive,
+            isPointerInsideSettings
+        )
+        .onContinuousHover { phase in
+            switch phase {
+            case .active:
+                if !isPointerInsideSettings {
+                    isPointerInsideSettings = true
+                }
+            case .ended:
+                if isPointerInsideSettings {
+                    isPointerInsideSettings = false
+                }
+            }
+        }
         .onAppear {
             musicMonitor.refreshNow()
             systemActivityMonitor.refreshNow()
             systemHUDController.refreshAvailability()
+        }
+        .onChange(of: selectedCategory) { _, category in
+            SettingsView.lastSelectedCategory = category
         }
         .onReceive(
             NotificationCenter.default.publisher(
@@ -721,7 +756,10 @@ struct SettingsView: View {
             Text("HUD 布局可在“通用”中切换。")
                 .settingsCaption()
         }
-        .task(id: selectedLightingSpeed) {
+        .task(
+            id: "\(selectedLightingSpeed.rawValue)-\(isPointerInsideSettings)"
+        ) {
+            guard isPointerInsideSettings else { return }
             glowPreviewLevel = 1
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: glowPreviewHoldDelay)
@@ -906,14 +944,18 @@ struct SettingsView: View {
             Text("HUD 布局可在“通用”中切换。")
                 .settingsCaption()
         }
-        .task {
+        .task(id: isPointerInsideSettings) {
+            guard isPointerInsideSettings else { return }
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 guard !Task.isCancelled else { return }
                 soundIconPreviewIndex = (soundIconPreviewIndex + 1) % 3
             }
         }
-        .task(id: selectedSoundSpeed) {
+        .task(
+            id: "\(selectedSoundSpeed.rawValue)-\(isPointerInsideSettings)"
+        ) {
+            guard isPointerInsideSettings else { return }
             let levels: [CGFloat] = [
                 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.0
             ]
@@ -1024,9 +1066,10 @@ struct SettingsView: View {
 
                         Capsule()
                             .fill(lightingStyleFill(style))
-                            .frame(
-                                width: geometry.size.width
-                                    * lightingPreviewFillFraction(style)
+                            .frame(width: geometry.size.width)
+                            .scaleEffect(
+                                x: lightingPreviewFillFraction(style),
+                                anchor: .leading
                             )
                             .opacity(
                                 style == .glow
@@ -1188,9 +1231,10 @@ struct SettingsView: View {
 
                         Capsule()
                             .fill(soundStyleFill(style))
-                            .frame(
-                                width: geometry.size.width
-                                    * soundPreviewFillFraction(style)
+                            .frame(width: geometry.size.width)
+                            .scaleEffect(
+                                x: soundPreviewFillFraction(style),
+                                anchor: .leading
                             )
                             .shadow(
                                 color: soundStyleGlow(style),
@@ -1749,7 +1793,8 @@ struct SettingsView: View {
                 } else {
                     SoftAuroraProgressTrack(
                         color: progressTrackAccent,
-                        isPlaying: true,
+                        isPlaying: isPointerInsideSettings
+                            && style == selectedProgressTrackStyle,
                         isActive: false
                     )
                     .frame(width: geometry.size.width, height: 10)
@@ -1800,10 +1845,18 @@ struct SettingsView: View {
 
             settingToggle(
                 title: "启用底部动态背景",
-                detail: "仅在音乐播放时显示，颜色跟随专辑封面",
+                detail: "颜色跟随专辑封面，可选择仅播放时或始终显示",
                 systemImage: "music.note.tv",
                 isOn: $notchBackgroundEnabled
             )
+
+            settingToggle(
+                title: "始终显示",
+                detail: "关闭时仅在音乐播放期间显示",
+                systemImage: "eye.fill",
+                isOn: $notchBackgroundAlwaysVisible
+            )
+            .disabled(!notchBackgroundEnabled)
 
             Divider()
                 .opacity(0.5)
@@ -1820,7 +1873,11 @@ struct SettingsView: View {
                 }
             }
 
-            Text("背景动画会跟随当前专辑封面主色，并在暂停播放时淡出。")
+            Text(
+                notchBackgroundAlwaysVisible
+                    ? "背景动画会跟随当前专辑封面主色，并始终保持显示。"
+                    : "背景动画会跟随当前专辑封面主色，并在暂停播放时淡出。"
+            )
                 .settingsCaption()
         }
     }
@@ -3084,7 +3141,8 @@ struct SettingsView: View {
             VStack(spacing: 4) {
                 WatchFaceView(
                     style: style,
-                    accent: Color(nsColor: ArtworkPalette.fallback)
+                    accent: Color(nsColor: ArtworkPalette.fallback),
+                    animatesMotion: false
                 )
                 .scaleEffect(0.52)
                 .frame(width: 48, height: 48)
@@ -3221,6 +3279,7 @@ private struct SparklesText: View {
     let text: String
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.settingsPreviewsActive) private var previewsActive
     @State private var sparkles: [Sparkle] = []
 
     private let colors = [
@@ -3241,6 +3300,7 @@ private struct SparklesText: View {
                                 )
                         }
                     }
+                    .id(previewsActive)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                 }
@@ -3272,6 +3332,7 @@ private struct Sparkle: Identifiable {
 private struct SparkleStar: View {
     let sparkle: Sparkle
 
+    @Environment(\.settingsPreviewsActive) private var previewsActive
     @State private var isVisible = false
 
     var body: some View {
@@ -3282,9 +3343,11 @@ private struct SparkleStar: View {
             .opacity(isVisible ? 1 : 0)
             .rotationEffect(.degrees(isVisible ? 150 : 75))
             .animation(
-                .easeInOut(duration: 0.4)
-                    .repeatForever(autoreverses: true)
-                    .delay(sparkle.delay),
+                previewsActive
+                    ? .easeInOut(duration: 0.4)
+                        .repeatForever(autoreverses: true)
+                        .delay(sparkle.delay)
+                    : nil,
                 value: isVisible
             )
             .onAppear { isVisible = true }
@@ -3379,12 +3442,15 @@ private struct SparkleShape: Shape {
 
 private struct ConfettiLayer: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.settingsPreviewsActive) private var previewsActive
 
     var body: some View {
-        if reduceMotion {
+        if reduceMotion || !previewsActive {
             ConfettiCanvas(time: 0, frozen: true)
         } else {
-            TimelineView(.animation) { timeline in
+            TimelineView(
+                .animation(minimumInterval: 1.0 / 30.0)
+            ) { timeline in
                 ConfettiCanvas(
                     time: timeline.date.timeIntervalSinceReferenceDate,
                     frozen: false
@@ -3398,7 +3464,7 @@ private struct ConfettiCanvas: View {
     let time: TimeInterval
     let frozen: Bool
 
-    private let particleCount = 44
+    private let particleCount = 48
 
     private let palette = [
         Color(red: 1.00, green: 0.42, blue: 0.34),
@@ -3406,12 +3472,13 @@ private struct ConfettiCanvas: View {
         Color(red: 0.62, green: 0.48, blue: 1.00),
         Color(red: 1.00, green: 0.80, blue: 0.45),
         Color(red: 0.45, green: 0.80, blue: 0.70),
-        Color(red: 0.42, green: 0.80, blue: 0.62)
+        Color(red: 0.42, green: 0.80, blue: 0.62),
+        Color(red: 0.42, green: 0.66, blue: 1.00)
     ]
 
     var body: some View {
         Canvas { context, size in
-            guard size.width > 120 else { return }
+            guard size.width > 120, size.height > 120 else { return }
             for index in 0..<particleCount {
                 drawFlake(in: &context, size: size, index: index)
             }
@@ -3423,117 +3490,53 @@ private struct ConfettiCanvas: View {
         size: CGSize,
         index: Int
     ) {
-        let seed = Double(unitRandom(index, 1))
+        let phase = Double(unitRandom(index, 1))
+        let speed = 46 + 54 * Double(unitRandom(index, 2))
         let startX =
-            Double(size.width) * (0.05 + 0.9 * Double(unitRandom(index, 2)))
-        let startY = 50 + 45 * Double(unitRandom(index, 3))
-        let entrySpeed = 70 * Double(unitRandom(index, 4))
-        let terminalSpeed = 140 + 100 * Double(unitRandom(index, 5))
-        let drag = 2.5 + 2.5 * Double(unitRandom(index, 6))
-        let swaySpeed = 0.7 + 1.7 * Double(unitRandom(index, 7))
-        let swayAmplitude = 7 + 20 * Double(unitRandom(index, 8))
-        let restDuration = 1.2 + 1.6 * Double(unitRandom(index, 9))
-        let gapDuration = 0.15 + 0.9 * Double(unitRandom(index, 10))
-        let floorY =
-            Double(size.height) - 14 - 40 * Double(unitRandom(index, 11))
-        let baseRotation = 360 * Double(unitRandom(index, 12))
-        let driftSpeed = (Double(unitRandom(index, 13)) - 0.5) * 80
-        let tumbleSpeed = 1.2 + 3.0 * Double(unitRandom(index, 14))
-        let tumbleAmplitude = 20 + 150 * Double(unitRandom(index, 15))
-        let flipSpeed = 1.5 + 4.0 * Double(unitRandom(index, 16))
-        let flipPhase = 6.28 * Double(unitRandom(index, 17))
-        let driftDirection = Double(unitRandom(index, 18)) - 0.5
+            Double(size.width) * (0.02 + 0.96 * Double(unitRandom(index, 3)))
+        let swayAmplitude = 4 + 12 * Double(unitRandom(index, 4))
+        let swaySpeed = 0.22 + 0.45 * Double(unitRandom(index, 5))
+        let drift = (Double(unitRandom(index, 6)) - 0.5) * 12
+        let baseRotation = 360 * Double(unitRandom(index, 7))
+        let spinSpeed = (Double(unitRandom(index, 8)) - 0.5) * 70
+        let flutterAmplitude = 8 + 22 * Double(unitRandom(index, 9))
+        let flutterSpeed = 0.55 + 1.0 * Double(unitRandom(index, 10))
+        let flipSpeed = 0.8 + 1.8 * Double(unitRandom(index, 11))
+        let flipPhase = 6.28 * Double(unitRandom(index, 12))
+        let width = 1.8 + 1.8 * Double(unitRandom(index, 13))
+        let height = 7 + 6 * Double(unitRandom(index, 14))
+        let opacity = 0.7 + 0.3 * Double(unitRandom(index, 15))
 
-        func fallY(at moment: Double) -> Double {
-            startY + terminalSpeed * moment
-                + (entrySpeed - terminalSpeed) * (1 - exp(-drag * moment))
-                    / drag
-        }
+        let topBand = 80.0
+        let bottomBand = 24.0
+        let travel = Double(size.height) + topBand + bottomBand
+        let distance = (time * speed + phase * travel)
+            .truncatingRemainder(dividingBy: travel)
+        let y = -topBand + distance
+        let elapsed = distance / speed
+        let clock = frozen ? phase * 6.28 : time
 
-        var low = 0.0
-        var high = 10.0
-        for _ in 0..<28 {
-            let mid = (low + high) / 2
-            if fallY(at: mid) < floorY {
-                low = mid
-            } else {
-                high = mid
-            }
-        }
-        let landingTime = (low + high) / 2
-        let period = landingTime + restDuration + gapDuration
-        let phase = period * Double(unitRandom(index, 19))
-        let elapsed = frozen
-            ? landingTime * (0.2 + 0.6 * Double(unitRandom(index, 20)))
-            : (time + phase).truncatingRemainder(dividingBy: period)
-        guard elapsed < landingTime + restDuration else { return }
-
-        func sway(at moment: Double) -> Double {
-            let primary =
-                sin(moment * swaySpeed * 2 * .pi + seed * 6.28)
+        let sway =
+            sin(clock * swaySpeed * 2 * .pi + phase * 6.28)
                 * swayAmplitude
-            let secondary =
-                sin(moment * swaySpeed * 3.6 * .pi + seed * 3.1)
-                * swayAmplitude * 0.3
-            return (primary + secondary) * min(1, moment / 1.2)
-        }
+            + sin(clock * swaySpeed * 3.7 * .pi + phase * 3.1)
+                * swayAmplitude * 0.22
+        let x = startX + sway + drift * elapsed
 
-        func rotation(at moment: Double) -> Double {
-            baseRotation + driftSpeed * moment
-                + sin(moment * tumbleSpeed + seed * 6.28) * tumbleAmplitude
-        }
-
-        func paperFlip(at moment: Double) -> Double {
-            0.12 + 0.88 * abs(cos(moment * flipSpeed + flipPhase))
-        }
-
-        let x: Double
-        let y: Double
-        let flakeRotation: Double
-        let flakeFlip: Double
-        let opacity: Double
-
-        if elapsed < landingTime {
-            y = fallY(at: elapsed)
-            x =
-                startX + sway(at: elapsed)
-                + driftDirection * 24 * elapsed
-            flakeRotation = rotation(at: elapsed)
-            flakeFlip = paperFlip(at: elapsed)
-            opacity = min(1, elapsed / 0.35)
-        } else {
-            let restTime = elapsed - landingTime
-            let fadeStart = restDuration * 0.55
-            let bounce =
-                max(0, sin(restTime * 10)) * 2.5 * exp(-restTime * 6)
-            x =
-                startX + sway(at: landingTime)
-                + driftDirection * 24 * landingTime
-            y = floorY - bounce
-            flakeRotation = rotation(at: landingTime)
-            flakeFlip = 1
-            if restTime < fadeStart {
-                opacity = 1
-            } else {
-                let fadeProgress =
-                    (restTime - fadeStart) / (restDuration - fadeStart)
-                opacity =
-                    1 - Double(smoothstep(0, 1, CGFloat(fadeProgress)))
-            }
-        }
-
-        guard opacity > 0.01 else { return }
+        let rotation =
+            baseRotation + spinSpeed * clock
+            + sin(clock * flutterSpeed * 2 * .pi + phase * 6.28)
+                * flutterAmplitude
+        let flip =
+            0.18 + 0.82 * abs(cos(clock * flipSpeed * 2 * .pi + flipPhase))
 
         let color = palette[index % palette.count]
-        let width = 4 + 3 * unitRandom(index, 21)
-        let height = 7 + 7 * unitRandom(index, 22)
 
         var particle = context
         particle.translateBy(x: CGFloat(x), y: CGFloat(y))
-        particle.rotate(by: .degrees(flakeRotation))
-        var flake = particle
-        flake.scaleBy(x: 1, y: CGFloat(flakeFlip))
-        flake.fill(
+        particle.rotate(by: .degrees(rotation))
+        particle.scaleBy(x: CGFloat(flip), y: 1)
+        particle.fill(
             Path(
                 roundedRect: CGRect(
                     x: -width / 2,
@@ -3541,7 +3544,7 @@ private struct ConfettiCanvas: View {
                     width: width,
                     height: height
                 ),
-                cornerRadius: 1.2
+                cornerRadius: 0.8
             ),
             with: .color(color.opacity(opacity))
         )
@@ -3554,14 +3557,6 @@ private struct ConfettiCanvas: View {
         return CGFloat(value - floor(value))
     }
 
-    private func smoothstep(
-        _ edge0: CGFloat,
-        _ edge1: CGFloat,
-        _ value: CGFloat
-    ) -> CGFloat {
-        let t = min(max((value - edge0) / (edge1 - edge0), 0), 1)
-        return t * t * (3 - 2 * t)
-    }
 }
 
 private struct SoundDeviceIconCarousel: View {
@@ -3585,7 +3580,7 @@ private struct SoundDeviceIconCarousel: View {
         ZStack {
             if !models.isEmpty {
                 let model = models[index % models.count]
-                AirPods3DView(model: model)
+                AirPods3DView(model: model, rotates: false)
                     .id(model)
                     .frame(width: size, height: size)
                     .transition(
@@ -4044,6 +4039,7 @@ private struct SystemHUDPreview: View {
     let style: SystemHUDStyle
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.settingsPreviewsActive) private var previewsActive
     @State private var level = 0.34
 
     private var percentage: Int {
@@ -4070,18 +4066,16 @@ private struct SystemHUDPreview: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .task(id: reduceMotion) {
-            guard !reduceMotion else { return }
+        .task(id: "\(reduceMotion)-\(previewsActive)") {
+            guard !reduceMotion, previewsActive else { return }
             let levels: [Double] = [0.34, 0.58, 0.82, 0.66, 0.95, 0.42]
             while !Task.isCancelled {
                 for value in levels {
                     guard !Task.isCancelled else { return }
-                    withAnimation(
-                        .spring(response: 0.32, dampingFraction: 0.84)
-                    ) {
+                    withAnimation(.easeOut(duration: 0.18)) {
                         level = value
                     }
-                    try? await Task.sleep(nanoseconds: 900_000_000)
+                    try? await Task.sleep(nanoseconds: 1_600_000_000)
                 }
             }
         }
@@ -4123,7 +4117,6 @@ private struct SystemHUDPreview: View {
                     )
                     .monospacedDigit()
                     .foregroundStyle(.white)
-                    .contentTransition(.numericText())
                     .frame(width: 13, alignment: .trailing)
             }
         }
@@ -4173,7 +4166,6 @@ private struct SystemHUDPreview: View {
                         )
                         .monospacedDigit()
                         .foregroundStyle(.white)
-                        .contentTransition(.numericText())
                 }
 
                 levelBar(height: 4.5)
@@ -4196,11 +4188,17 @@ private struct SystemHUDPreview: View {
 
                 Capsule()
                     .fill(.white.opacity(0.9))
-                    .frame(
-                        width: max(
-                            height,
-                            proxy.size.width * level
-                        )
+                    .frame(width: proxy.size.width)
+                    .scaleEffect(
+                        x: CGFloat(
+                            max(
+                                Double(
+                                    height / max(proxy.size.width, 1)
+                                ),
+                                level
+                            )
+                        ),
+                        anchor: .leading
                     )
             }
         }

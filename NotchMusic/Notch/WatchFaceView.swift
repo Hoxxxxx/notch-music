@@ -250,6 +250,7 @@ struct WatchFaceView: View {
     let style: WatchFaceStyle
     let accent: Color
     var size: CGFloat = 88
+    var animatesMotion = true
 
     @AppStorage(WatchFaceClockSettings.uses24HourKey)
     private var uses24Hour = true
@@ -279,7 +280,7 @@ struct WatchFaceView: View {
         case .singleLine:
             SingleLineWatchFace(time: time, accent: accent)
         case .flow:
-            FlowWatchFace(time: time)
+            FlowWatchFace(time: time, animatesMotion: animatesMotion)
         case .flux:
             FluxWatchFace(time: time)
         case .dualLine:
@@ -561,6 +562,7 @@ private struct SingleLineWatchFace: View {
 
 private struct FlowWatchFace: View {
     let time: WatchFaceTime
+    var animatesMotion = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isRotating = false
@@ -579,7 +581,7 @@ private struct FlowWatchFace: View {
             FlowBlobField()
                 .rotationEffect(.degrees(isRotating ? 360 : 0))
                 .animation(
-                    reduceMotion
+                    reduceMotion || !animatesMotion
                         ? nil
                         : .linear(duration: 24).repeatForever(autoreverses: false),
                     value: isRotating
@@ -592,7 +594,10 @@ private struct FlowWatchFace: View {
         }
         .watchFaceSurface()
         .onAppear {
-            isRotating = true
+            isRotating = animatesMotion
+        }
+        .onChange(of: animatesMotion) { _, enabled in
+            isRotating = enabled
         }
     }
 

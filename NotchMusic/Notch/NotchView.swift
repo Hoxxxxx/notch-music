@@ -186,6 +186,7 @@ enum NotchBackgroundEffect: String, CaseIterable, Identifiable {
 enum NotchBackgroundSettings {
     static let enabled = "NotchMusic.notchBackground.enabled"
     static let effect = "NotchMusic.notchBackground.effect"
+    static let alwaysVisible = "NotchMusic.notchBackground.alwaysVisible"
 }
 
 private enum NotchContentPage: String, CaseIterable, Identifiable {
@@ -252,6 +253,8 @@ struct NotchView: View {
     private var notchBackgroundEnabled = true
     @AppStorage(NotchBackgroundSettings.effect)
     private var notchBackgroundEffectRaw = NotchBackgroundEffect.aurora.rawValue
+    @AppStorage(NotchBackgroundSettings.alwaysVisible)
+    private var notchBackgroundAlwaysVisible = false
     @AppStorage(SystemHUDSettings.style)
     private var systemHUDStyleRaw = SystemHUDStyle.customOSD.rawValue
     @AppStorage(SoundHUDSettings.content)
@@ -283,7 +286,8 @@ struct NotchView: View {
     @State private var playbackLingerTask: Task<Void, Never>?
 
     private let expandedArtworkSize: CGFloat = 96
-    private let compactExpandedArtworkSize: CGFloat = 128
+    private let compactExpandedArtworkSize: CGFloat = 118
+    private let compactExpandedRowHeight: CGFloat = 22
     private let volumeSliderPillWidth: CGFloat = 108
     private let expandedWatchFaceSize = NotchLayout.expandedContentHeight
     private let compactOuterPadding: CGFloat = 6
@@ -354,7 +358,7 @@ struct NotchView: View {
             ? hudTopCornerRadius
             : usesExpandedLayout
             ? NotchLayout.expandedTopCornerRadius
-            : showsNotchSideHUD ? 10 : showsScreenStateIconOnly ? 0 : 6
+            : showsNotchSideHUD ? 10 : 6
         let bottomCornerRadius: CGFloat = showsExpandedHUD
             ? 22
             : usesExpandedLayout
@@ -378,7 +382,7 @@ struct NotchView: View {
                 : showsExpandedHUD
                 ? hudHeight
                 : usesExpandedLayout
-                ? NotchLayout.expandedHeight
+                ? expandedPanelHeight
                 : panelState.topInset + hoverPreviewHeight
         )
         let expandedArtworkOffset = CGPoint(
@@ -399,6 +403,7 @@ struct NotchView: View {
                         bottomBackground: bottomBackground,
                         isPlaying: isPlaying,
                         backgroundEnabled: notchBackgroundEnabled,
+                        alwaysVisible: notchBackgroundAlwaysVisible,
                         backgroundEffect: selectedNotchBackgroundEffect,
                         spectrumLevels: audioSpectrumMonitor.levels,
                         isExpanded: usesExpandedLayout,
@@ -429,7 +434,10 @@ struct NotchView: View {
                                     style: .continuous
                                 )
                             )
-                            .scaleEffect(compactGlow ? 1.10 : 1.24)
+                            .scaleEffect(
+                                x: compactGlow ? 1.10 : 1.24,
+                                y: compactGlow ? 1.04 : 1.24
+                            )
                             .saturation(1.45)
                             .contrast(1.06)
                             .brightness(0.06)
@@ -439,7 +447,6 @@ struct NotchView: View {
                             .offset(
                                 x: expandedArtworkOffset.x,
                                 y: expandedArtworkOffset.y
-                                    + (compactGlow ? 5 : 0)
                             )
                     }
                     .id(snapshot.trackID)
@@ -460,6 +467,13 @@ struct NotchView: View {
                             }
                             .compositingGroup()
                     }
+                    .offset(
+                        x: contentPageOffset(
+                            for: .music,
+                            width: size.width
+                        )
+                    )
+                    .opacity(contentPageOpacity(for: .music))
                     .animation(
                         .easeInOut(duration: 0.46),
                         value: snapshot.trackID
@@ -1477,7 +1491,7 @@ struct NotchView: View {
 
         switch presentation {
         case .lock, .unlock:
-            return 34
+            return 28
         case .device:
             return 48
         case .activity(let id):
@@ -1487,7 +1501,7 @@ struct NotchView: View {
             let labelWidth = label.map(compactLabelWidth) ?? 0
             return min(max(16, labelWidth) + 16, 170)
         case .playback:
-            return 38
+            return 34
         }
     }
 
@@ -1701,6 +1715,12 @@ struct NotchView: View {
             : compactExpandedArtworkSize
     }
 
+    private var expandedPanelHeight: CGFloat {
+        showsWatchFaceInMusic
+            ? NotchLayout.expandedHeight
+            : NotchLayout.compactExpandedHeight
+    }
+
     private var expandedPanelWidth: CGFloat {
         let width = NotchLayout.expandedWidth(
             notchWidth: panelState.notchWidth
@@ -1789,7 +1809,7 @@ struct NotchView: View {
             0,
             musicWidth - artworkSize - artworkSpacing
         )
-        let rowHeight = expandedArtworkSize / 4
+        let rowHeight = compactExpandedRowHeight
 
         return HStack(alignment: .top, spacing: artworkSpacing) {
             Color.clear
@@ -1827,7 +1847,7 @@ struct NotchView: View {
                 .frame(height: 28)
 
                 playbackProgress(snapshot)
-                    .frame(height: 32)
+                    .frame(height: 28)
             }
             .frame(width: textColumnWidth, alignment: .topLeading)
         }
@@ -2045,7 +2065,9 @@ struct NotchView: View {
             items: items,
             spacing: spacing
         )
-        let rowHeight = expandedArtworkSize / 4
+        let rowHeight = showsWatchFaceInMusic
+            ? expandedArtworkSize / 4
+            : compactExpandedRowHeight
 
         return CGRect(
             x: NotchLayout.expandedHorizontalPadding
@@ -2942,6 +2964,7 @@ private struct NotchBackdrop: View {
     let bottomBackground: Color
     let isPlaying: Bool
     let backgroundEnabled: Bool
+    let alwaysVisible: Bool
     let backgroundEffect: NotchBackgroundEffect
     let spectrumLevels: [CGFloat]
     let isExpanded: Bool
@@ -2998,7 +3021,7 @@ private struct NotchBackdrop: View {
                     )
                 }
 
-                if isPlaying && backgroundEnabled {
+                if backgroundEnabled && (isPlaying || alwaysVisible) {
                     NotchBackgroundView(
                         effect: backgroundEffect,
                         accent: bottomBackground,
@@ -3037,6 +3060,10 @@ private struct NotchBackdrop: View {
         .animation(
             .easeInOut(duration: 0.4),
             value: isPlaying
+        )
+        .animation(
+            .easeInOut(duration: 0.25),
+            value: alwaysVisible
         )
     }
 }

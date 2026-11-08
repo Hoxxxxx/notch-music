@@ -11,6 +11,7 @@ struct NotchMetrics {
 
 enum NotchLayout {
     static let expandedHeight: CGFloat = 186
+    static let compactExpandedHeight: CGFloat = 176
     static let expandedTopPadding: CGFloat = 42
     static let expandedBottomPadding: CGFloat = 12
     static let expandedHorizontalPadding: CGFloat = 35

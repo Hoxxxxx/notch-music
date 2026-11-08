@@ -110,12 +110,16 @@ enum AirPodsModelKind: String, Equatable {
 
 struct AirPods3DView: NSViewRepresentable {
     let model: AirPodsModelKind
+    var rotates = true
 
     func makeNSView(context: Context) -> SCNView {
         let scene = SCNScene()
         scene.background.contents = NSColor.clear
 
-        let pair = AirPods3DModel.makeRotatingModel(model)
+        let pair = AirPods3DModel.makeRotatingModel(
+            model,
+            rotates: rotates
+        )
         scene.rootNode.addChildNode(pair)
 
         let camera = SCNNode()
@@ -141,8 +145,8 @@ struct AirPods3DView: NSViewRepresentable {
         view.backgroundColor = .clear
         view.antialiasingMode = .multisampling4X
         view.preferredFramesPerSecond = 60
-        view.rendersContinuously = true
-        view.isPlaying = true
+        view.rendersContinuously = rotates
+        view.isPlaying = rotates
         view.allowsCameraControl = false
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
@@ -223,7 +227,8 @@ private enum AirPods3DModel {
     }
 
     static func makeRotatingModel(
-        _ model: AirPodsModelKind
+        _ model: AirPodsModelKind,
+        rotates: Bool = true
     ) -> SCNNode {
         let pair = SCNNode()
         guard let source = source(for: model) else { return pair }
@@ -245,14 +250,16 @@ private enum AirPods3DModel {
         content.scale = SCNVector3(modelScale, modelScale, modelScale)
         pair.addChildNode(content)
 
-        let rotation = SCNAction.rotateBy(
-            x: 0,
-            y: 2 * CGFloat.pi,
-            z: 0,
-            duration: 6
-        )
-        rotation.timingMode = .linear
-        pair.runAction(.repeatForever(rotation))
+        if rotates {
+            let rotation = SCNAction.rotateBy(
+                x: 0,
+                y: 2 * CGFloat.pi,
+                z: 0,
+                duration: 6
+            )
+            rotation.timingMode = .linear
+            pair.runAction(.repeatForever(rotation))
+        }
         return pair
     }
 

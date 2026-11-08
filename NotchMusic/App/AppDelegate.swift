@@ -219,7 +219,7 @@ enum ApplicationIconStyle: String, CaseIterable, Identifiable {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let musicMonitor = MusicMonitor()
     let systemActivityMonitor = SystemActivityMonitor()
     let audioSpectrumMonitor = AudioSpectrumMonitor()
@@ -426,6 +426,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             window.title = "NotchMusic 设置"
             window.isReleasedWhenClosed = false
+            window.delegate = self
             window.styleMask.insert(.fullSizeContentView)
             window.titlebarAppearsTransparent = true
             window.isOpaque = false
@@ -452,6 +453,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window == settingsWindowController?.window else {
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.settingsWindowController = nil
+        }
     }
 
     @objc private func connectMusic() {

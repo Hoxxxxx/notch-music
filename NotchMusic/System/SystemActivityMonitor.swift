@@ -446,6 +446,10 @@ final class SystemActivityMonitor: NSObject, ObservableObject {
                 continue
             }
 
+            if isAmbientSpeechProcess(process) {
+                continue
+            }
+
             var runningAddress = AudioObjectPropertyAddress(
                 mSelector: kAudioProcessPropertyIsRunningInput,
                 mScope: kAudioObjectPropertyScopeGlobal,
@@ -466,6 +470,31 @@ final class SystemActivityMonitor: NSObject, ObservableObject {
         }
 
         return false
+    }
+
+    @available(macOS 14.2, *)
+    private static func isAmbientSpeechProcess(
+        _ process: AudioObjectID
+    ) -> Bool {
+        var bundleAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioProcessPropertyBundleID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var bundleID: CFString = "" as CFString
+        var bundleSize = UInt32(MemoryLayout<CFString>.size)
+        let status = withUnsafeMutablePointer(to: &bundleID) { pointer in
+            AudioObjectGetPropertyData(
+                process,
+                &bundleAddress,
+                0,
+                nil,
+                &bundleSize,
+                pointer
+            )
+        }
+        guard status == noErr else { return false }
+        return (bundleID as String) == "com.apple.CoreSpeech"
     }
 
     private static func deviceIsUsingMicrophoneInput() -> Bool {
