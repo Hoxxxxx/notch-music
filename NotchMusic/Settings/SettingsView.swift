@@ -15,8 +15,7 @@ private extension EnvironmentValues {
 
 private enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
-    case lighting
-    case sound
+    case hud
     case music
     case watchFace
     case detection
@@ -28,10 +27,8 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general:
             return "通用"
-        case .lighting:
-            return "灯光"
-        case .sound:
-            return "声音"
+        case .hud:
+            return "HUD"
         case .music:
             return "音乐"
         case .watchFace:
@@ -47,10 +44,8 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general:
             return "gearshape.fill"
-        case .lighting:
-            return "sun.max.fill"
-        case .sound:
-            return "speaker.wave.2.fill"
+        case .hud:
+            return "slider.horizontal.3"
         case .music:
             return "music.note"
         case .watchFace:
@@ -66,9 +61,7 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
         switch self {
         case .general:
             return Color(red: 0.48, green: 0.52, blue: 0.62)
-        case .lighting:
-            return Color(red: 1.00, green: 0.74, blue: 0.25)
-        case .sound:
+        case .hud:
             return Color(red: 0.66, green: 0.40, blue: 1.00)
         case .music:
             return Color(red: 1.00, green: 0.34, blue: 0.38)
@@ -82,12 +75,65 @@ private enum SettingsCategory: String, CaseIterable, Identifiable {
     }
 }
 
+private enum HUDPage: String, CaseIterable, Identifiable {
+    case volume
+    case lighting
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .volume:
+            return "音量"
+        case .lighting:
+            return "亮度与键盘"
+        }
+    }
+}
+
+private enum IconSettingsPage: String, CaseIterable, Identifiable {
+    case menuBar
+    case application
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .menuBar:
+            return "菜单栏"
+        case .application:
+            return "应用"
+        }
+    }
+}
+
+private enum NotchBackgroundVisibility: String, CaseIterable, Identifiable {
+    case off
+    case playback
+    case always
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .off:
+            return "关闭"
+        case .playback:
+            return "播放时"
+        case .always:
+            return "始终显示"
+        }
+    }
+}
+
 struct SettingsView: View {
     private static var lastSelectedCategory = SettingsCategory.general
 
     @State private var selectedCategory = SettingsView.lastSelectedCategory
     @State private var isSidebarExpanded = false
     @State private var hoveredCategory: SettingsCategory?
+    @State private var selectedHUDPage = HUDPage.volume
+    @State private var selectedIconSettingsPage = IconSettingsPage.menuBar
     @State private var soundIconPreviewIndex = 0
     @State private var glowPreviewLevel: CGFloat = 1
     @State private var decibelPreviewLevel: CGFloat = 0.40
@@ -289,45 +335,42 @@ struct SettingsView: View {
             case .general:
                 VStack(spacing: 12) {
                     glassCard {
-                        menuBarIconSection
-                    }
-
-                    glassCard {
-                        applicationIconSection
+                        iconSettingsSection
                     }
 
                     glassCard {
                         notchBehaviorSection
                     }
+                }
 
+            case .hud:
+                VStack(spacing: 12) {
                     glassCard {
                         systemHUDStyleSection
                     }
 
+                    hudPagePicker
+
+                    if selectedHUDPage == .volume {
+                        glassCard {
+                            soundNotificationSection
+                        }
+
+                        glassCard {
+                            soundControlsSection
+                        }
+                    } else {
+                        glassCard {
+                            lightingNotificationSection
+                        }
+
+                        glassCard {
+                            lightingDetailsSection
+                        }
+                    }
+
                     glassCard {
                         systemHUDControlsSection
-                    }
-                }
-
-            case .lighting:
-                VStack(spacing: 12) {
-                    glassCard {
-                        lightingNotificationSection
-                    }
-
-                    glassCard {
-                        lightingDetailsSection
-                    }
-                }
-
-            case .sound:
-                VStack(spacing: 12) {
-                    glassCard {
-                        soundNotificationSection
-                    }
-
-                    glassCard {
-                        soundControlsSection
                     }
                 }
 
@@ -338,7 +381,14 @@ struct SettingsView: View {
                     }
 
                     glassCard {
-                        progressTrackSection
+                        VStack(alignment: .leading, spacing: 12) {
+                            progressTrackSection
+
+                            Divider()
+                                .opacity(0.5)
+
+                            musicSpectrumSection
+                        }
                     }
 
                     glassCard {
@@ -349,9 +399,6 @@ struct SettingsView: View {
                         musicControlsSection
                     }
 
-                    glassCard {
-                        musicSpectrumSection
-                    }
                 }
 
             case .watchFace:
@@ -360,20 +407,34 @@ struct SettingsView: View {
                 }
 
             case .detection:
-                VStack(spacing: 12) {
-                    glassCard {
+                glassCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        sectionHeader(
+                            title: "状态指示器",
+                            systemImage: "switch.2"
+                        )
+
+                        Text("统一管理屏幕录制、专注模式、Caps Lock 与隐私状态在灵动岛中的显示。")
+                            .settingsCaption()
+
+                        Divider()
+                            .opacity(0.5)
+
                         screenRecordingSection
-                    }
 
-                    glassCard {
+                        Divider()
+                            .opacity(0.5)
+
                         focusModeSection
-                    }
 
-                    glassCard {
+                        Divider()
+                            .opacity(0.5)
+
                         capsLockSection
-                    }
 
-                    glassCard {
+                        Divider()
+                            .opacity(0.5)
+
                         privacyIndicatorsSection
                     }
                 }
@@ -572,9 +633,18 @@ struct SettingsView: View {
             }
 
             Text(
-                "选择系统 HUD 的布局。音量的样式、时长和反馈在“声音”中设置；亮度和键盘背光在“灯光”中设置。"
+                "选择系统 HUD 的布局。音量与灯光的样式、时长和反馈在下方标签中设置。"
             )
                 .settingsCaption()
+        }
+    }
+
+    private var hudPagePicker: some View {
+        SettingsPageTabs(
+            titles: HUDPage.allCases.map(\.title),
+            selectedIndex: HUDPage.allCases.firstIndex(of: selectedHUDPage) ?? 0
+        ) { index in
+            selectedHUDPage = HUDPage.allCases[index]
         }
     }
 
@@ -753,7 +823,7 @@ struct SettingsView: View {
                 }
             }
 
-            Text("HUD 布局可在“通用”中切换。")
+            Text("HUD 布局可在本页顶部切换。")
                 .settingsCaption()
         }
         .task(
@@ -941,7 +1011,7 @@ struct SettingsView: View {
                 }
             }
 
-            Text("HUD 布局可在“通用”中切换。")
+            Text("HUD 布局可在本页顶部切换。")
                 .settingsCaption()
         }
         .task(id: isPointerInsideSettings) {
@@ -1455,13 +1525,50 @@ struct SettingsView: View {
         }
     }
 
-    private var menuBarIconSection: some View {
+    private var iconSettingsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            sectionHeader(
-                title: "菜单栏图标",
-                systemImage: "menubar.rectangle"
-            )
+            HStack {
+                sectionHeader(
+                    title: "图标",
+                    systemImage: "app.dashed"
+                )
 
+                Spacer()
+
+                Text(
+                    selectedIconSettingsPage == .menuBar
+                        ? MenuBarIconStyle(
+                            rawValue: menuBarIconStyleRaw
+                        )?.displayName ?? ""
+                        : selectedApplicationIconStyle.displayName
+                )
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            iconSettingsPagePicker
+
+            if selectedIconSettingsPage == .menuBar {
+                menuBarIconContent
+            } else {
+                applicationIconContent
+            }
+        }
+    }
+
+    private var iconSettingsPagePicker: some View {
+        SettingsPageTabs(
+            titles: IconSettingsPage.allCases.map(\.title),
+            selectedIndex: IconSettingsPage.allCases.firstIndex(
+                of: selectedIconSettingsPage
+            ) ?? 0
+        ) { index in
+            selectedIconSettingsPage = IconSettingsPage.allCases[index]
+        }
+    }
+
+    private var menuBarIconContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
             LazyVGrid(
                 columns: Array(
                     repeating: GridItem(.flexible(), spacing: 6),
@@ -1536,21 +1643,8 @@ struct SettingsView: View {
         }
     }
 
-    private var applicationIconSection: some View {
+    private var applicationIconContent: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                sectionHeader(
-                    title: "应用图标",
-                    systemImage: "app.fill"
-                )
-
-                Spacer()
-
-                Text(selectedApplicationIconStyle.displayName)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-
             LazyVGrid(
                 columns: Array(
                     repeating: GridItem(.flexible(), spacing: 8),
@@ -1843,20 +1937,24 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingToggle(
-                title: "启用底部动态背景",
-                detail: "颜色跟随专辑封面，可选择仅播放时或始终显示",
-                systemImage: "music.note.tv",
-                isOn: $notchBackgroundEnabled
-            )
+            HStack {
+                Text("显示时机")
+                    .font(.system(size: 12, weight: .medium))
 
-            settingToggle(
-                title: "始终显示",
-                detail: "关闭时仅在音乐播放期间显示",
-                systemImage: "eye.fill",
-                isOn: $notchBackgroundAlwaysVisible
-            )
-            .disabled(!notchBackgroundEnabled)
+                Spacer()
+
+                SettingsPageTabs(
+                    titles: NotchBackgroundVisibility.allCases.map(\.title),
+                    selectedIndex: NotchBackgroundVisibility.allCases
+                        .firstIndex(
+                            of: notchBackgroundVisibility.wrappedValue
+                        ) ?? 0
+                ) { index in
+                    notchBackgroundVisibility.wrappedValue =
+                        NotchBackgroundVisibility.allCases[index]
+                }
+                .frame(width: 238)
+            }
 
             Divider()
                 .opacity(0.5)
@@ -1873,12 +1971,19 @@ struct SettingsView: View {
                 }
             }
 
-            Text(
-                notchBackgroundAlwaysVisible
-                    ? "背景动画会跟随当前专辑封面主色，并始终保持显示。"
-                    : "背景动画会跟随当前专辑封面主色，并在暂停播放时淡出。"
-            )
+            Text(notchBackgroundSummary)
                 .settingsCaption()
+        }
+    }
+
+    private var notchBackgroundSummary: String {
+        switch notchBackgroundVisibility.wrappedValue {
+        case .off:
+            return "底部动态背景已关闭。"
+        case .playback:
+            return "背景动画会跟随当前专辑封面主色，并在暂停播放时淡出。"
+        case .always:
+            return "背景动画会跟随当前专辑封面主色，并始终保持显示。"
         }
     }
 
@@ -1958,6 +2063,20 @@ struct SettingsView: View {
 
     private var selectedNotchBackgroundEffect: NotchBackgroundEffect {
         NotchBackgroundEffect(rawValue: notchBackgroundEffectRaw) ?? .aurora
+    }
+
+    private var notchBackgroundVisibility:
+        Binding<NotchBackgroundVisibility> {
+        Binding(
+            get: {
+                guard notchBackgroundEnabled else { return .off }
+                return notchBackgroundAlwaysVisible ? .always : .playback
+            },
+            set: { visibility in
+                notchBackgroundEnabled = visibility != .off
+                notchBackgroundAlwaysVisible = visibility == .always
+            }
+        )
     }
 
     private var selectedProgressTrackStyle: ProgressTrackStyle {
@@ -3275,6 +3394,68 @@ struct SettingsView: View {
     }
 }
 
+private struct SettingsPageTabs: View {
+    let titles: [String]
+    let selectedIndex: Int
+    let onSelect: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(titles.enumerated()), id: \.offset) { index, title in
+                Button {
+                    onSelect(index)
+                } label: {
+                    Text(title)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(
+                            index == selectedIndex
+                                ? Color.white
+                                : Color.primary.opacity(0.62)
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background {
+            GeometryReader { proxy in
+                let segmentWidth = max(proxy.size.width - 6, 0)
+                    / CGFloat(max(titles.count, 1))
+
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.78))
+                    .frame(
+                        width: segmentWidth,
+                        height: max(proxy.size.height - 6, 0)
+                    )
+                    .offset(
+                        x: CGFloat(selectedIndex) * segmentWidth + 3,
+                        y: 3
+                    )
+            }
+            .allowsHitTesting(false)
+        }
+        .background(
+            Color.primary.opacity(0.05),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(
+                    Color.primary.opacity(0.08),
+                    lineWidth: 0.8
+                )
+        }
+        .animation(
+            .easeInOut(duration: 0.45),
+            value: selectedIndex
+        )
+    }
+}
+
 private struct SparklesText: View {
     let text: String
 
@@ -3580,7 +3761,7 @@ private struct SoundDeviceIconCarousel: View {
         ZStack {
             if !models.isEmpty {
                 let model = models[index % models.count]
-                AirPods3DView(model: model, rotates: false)
+                AirPods3DView(model: model, framesPerSecond: 30)
                     .id(model)
                     .frame(width: size, height: size)
                     .transition(

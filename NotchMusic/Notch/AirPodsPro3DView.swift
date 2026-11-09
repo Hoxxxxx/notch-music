@@ -111,6 +111,7 @@ enum AirPodsModelKind: String, Equatable {
 struct AirPods3DView: NSViewRepresentable {
     let model: AirPodsModelKind
     var rotates = true
+    var framesPerSecond = 60
 
     func makeNSView(context: Context) -> SCNView {
         let scene = SCNScene()
@@ -144,7 +145,7 @@ struct AirPods3DView: NSViewRepresentable {
         view.pointOfView = camera
         view.backgroundColor = .clear
         view.antialiasingMode = .multisampling4X
-        view.preferredFramesPerSecond = 60
+        view.preferredFramesPerSecond = framesPerSecond
         view.rendersContinuously = rotates
         view.isPlaying = rotates
         view.allowsCameraControl = false
