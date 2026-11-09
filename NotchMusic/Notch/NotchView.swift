@@ -512,6 +512,25 @@ struct NotchView: View {
                                         contentRevealAnimation,
                                         value: panelState.isExpanded
                                     )
+                                    .overlay {
+                                        if panelState.isExpanded,
+                                           !systemActivityMonitor.isScreenLocked {
+                                            TrackpadPageSwipeView(
+                                                excludedLeadingWidth:
+                                                    calendarDateWheelExcludedWidth(
+                                                        pageWidth: size.width
+                                                    ),
+                                                onSwipe: { direction in
+                                                    swipeContentPage(direction)
+                                                }
+                                            )
+                                            .frame(
+                                                width: size.width,
+                                                height: size.height
+                                            )
+                                            .allowsHitTesting(false)
+                                        }
+                                    }
                             }
                         } else if showsCompactActivity {
                             compactContent(
@@ -1335,42 +1354,7 @@ struct NotchView: View {
                           outgoingContentPage == nil else {
                         return
                     }
-                    let currentIndex =
-                        NotchContentPage.allCases.firstIndex(
-                            of: selectedContentPage
-                        ) ?? 0
-                    let targetIndex =
-                        NotchContentPage.allCases.firstIndex(
-                            of: page
-                        ) ?? currentIndex
-
-                    contentPageTransitionDirection =
-                        targetIndex > currentIndex
-                            ? .forward
-                            : .backward
-                    outgoingContentPage = selectedContentPage
-                    contentPageTransitionProgress = 0
-                    selectedContentPage = page
-                    pageSwitchTask?.cancel()
-                    pageSwitchTask = Task { @MainActor in
-                        try? await Task.sleep(
-                            nanoseconds: 16_000_000
-                        )
-                        guard !Task.isCancelled else { return }
-
-                        withAnimation(contentPageAnimation) {
-                            contentPageTransitionProgress = 1
-                        }
-                        try? await Task.sleep(
-                            nanoseconds: reduceMotion
-                                ? 220_000_000
-                                : 600_000_000
-                        )
-                        guard !Task.isCancelled else { return }
-
-                        outgoingContentPage = nil
-                        contentPageTransitionProgress = 1
-                    }
+                    switchContentPage(to: page)
                 } label: {
                     Image(systemName: page.systemImage)
                         .font(.system(size: 11.5, weight: .semibold))
@@ -1402,6 +1386,62 @@ struct NotchView: View {
             Capsule()
                 .stroke(Color.white.opacity(0.07), lineWidth: 0.5)
         }
+    }
+
+    private func switchContentPage(
+        to page: NotchContentPage,
+        direction: ContentPageTransitionDirection? = nil
+    ) {
+        let currentIndex =
+            NotchContentPage.allCases.firstIndex(
+                of: selectedContentPage
+            ) ?? 0
+        let targetIndex =
+            NotchContentPage.allCases.firstIndex(of: page) ?? currentIndex
+
+        contentPageTransitionDirection =
+            direction
+            ?? (targetIndex > currentIndex ? .forward : .backward)
+        outgoingContentPage = selectedContentPage
+        contentPageTransitionProgress = 0
+        selectedContentPage = page
+        pageSwitchTask?.cancel()
+        pageSwitchTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 16_000_000)
+            guard !Task.isCancelled else { return }
+
+            withAnimation(contentPageAnimation) {
+                contentPageTransitionProgress = 1
+            }
+            try? await Task.sleep(
+                nanoseconds: reduceMotion
+                    ? 220_000_000
+                    : 600_000_000
+            )
+            guard !Task.isCancelled else { return }
+
+            outgoingContentPage = nil
+            contentPageTransitionProgress = 1
+        }
+    }
+
+    private func swipeContentPage(
+        _ direction: ContentPageTransitionDirection
+    ) {
+        guard outgoingContentPage == nil else { return }
+        let target: NotchContentPage =
+            selectedContentPage == .music ? .calendar : .music
+        switchContentPage(to: target, direction: direction)
+    }
+
+    private func calendarDateWheelExcludedWidth(
+        pageWidth: CGFloat
+    ) -> CGFloat {
+        guard selectedContentPage == .calendar else { return 0 }
+        let contentWidth =
+            pageWidth - NotchLayout.expandedHorizontalPadding * 2
+        let monthWidth = min(max(contentWidth * 0.45, 186), 218)
+        return NotchLayout.expandedHorizontalPadding + monthWidth
     }
 
     private var hasSystemActivityIndicator: Bool {
@@ -4731,5 +4771,128 @@ private struct HoverParallaxModifier: ViewModifier {
 private extension View {
     func hoverParallax(size: CGFloat, isEnabled: Bool = true) -> some View {
         modifier(HoverParallaxModifier(size: size, isEnabled: isEnabled))
+    }
+}
+
+private struct TrackpadPageSwipeView: NSViewRepresentable {
+    let excludedLeadingWidth: CGFloat
+    let onSwipe: (ContentPageTransitionDirection) -> Void
+
+    func makeNSView(context: Context) -> TrackpadPageSwipeNSView {
+        let view = TrackpadPageSwipeNSView()
+        view.excludedLeadingWidth = excludedLeadingWidth
+        view.onSwipe = onSwipe
+        return view
+    }
+
+    func updateNSView(_ nsView: TrackpadPageSwipeNSView, context: Context) {
+        nsView.excludedLeadingWidth = excludedLeadingWidth
+        nsView.onSwipe = onSwipe
+    }
+}
+
+private final class TrackpadPageSwipeNSView: NSView {
+    var excludedLeadingWidth: CGFloat = 0
+    var onSwipe: ((ContentPageTransitionDirection) -> Void)?
+
+    private var eventMonitor: Any?
+    private var accumulatedDeltaX: CGFloat = 0
+    private var hasTriggered = false
+    private let triggerThreshold: CGFloat = 55
+
+    override var acceptsFirstResponder: Bool { false }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        installEventMonitor()
+    }
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        super.viewWillMove(toWindow: newWindow)
+        if newWindow == nil {
+            removeEventMonitor()
+        }
+    }
+
+    private func installEventMonitor() {
+        guard eventMonitor == nil, window != nil else { return }
+        eventMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: [.scrollWheel]
+        ) { [weak self] event in
+            self?.handleScrollWheel(event) ?? event
+        }
+    }
+
+    private func removeEventMonitor() {
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
+        }
+        resetGesture()
+    }
+
+    private func handleScrollWheel(_ event: NSEvent) -> NSEvent? {
+        guard isTrackpadPageSwipe(event) else {
+            resetGesture()
+            return event
+        }
+
+        if event.phase.contains(.began) {
+            accumulatedDeltaX = 0
+            hasTriggered = false
+        }
+
+        accumulatedDeltaX += event.scrollingDeltaX
+
+        if !hasTriggered,
+           abs(accumulatedDeltaX) >= triggerThreshold {
+            hasTriggered = true
+            let direction: ContentPageTransitionDirection =
+                accumulatedDeltaX < 0 ? .forward : .backward
+            onSwipe?(direction)
+        }
+
+        if event.phase.contains(.ended)
+            || event.phase.contains(.cancelled) {
+            resetGesture()
+        }
+
+        return nil
+    }
+
+    private func isTrackpadPageSwipe(_ event: NSEvent) -> Bool {
+        guard event.phase != [],
+              abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY),
+              let window else {
+            return false
+        }
+
+        let inWindow = window.convertPoint(
+            fromScreen: NSEvent.mouseLocation
+        )
+        let location = convert(inWindow, from: nil)
+        let isInside =
+            location.x >= 0
+            && location.x <= bounds.width
+            && location.y >= 0
+            && location.y <= bounds.height
+        let isInsideDateWheel =
+            excludedLeadingWidth > 0
+            && location.x <= excludedLeadingWidth
+
+        return isInside && !isInsideDateWheel
+    }
+
+    private func resetGesture() {
+        accumulatedDeltaX = 0
+        hasTriggered = false
+    }
+
+    deinit {
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+        }
     }
 }
