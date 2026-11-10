@@ -5,6 +5,21 @@
         <link>https://github.com/Hoxxxxx/notch-music</link>
         <description>NotchMusic 更新日志</description>
         <language>zh-cn</language>
-        <items></items>
+        <items>
+        <item>
+            <title>Version 0.3.0</title>
+            <description><![CDATA[新增自动更新功能，支持应用内检查更新]]></description>
+            <pubDate>Tue, 10 Nov 2026 09:53:32 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.3.0/NotchMusic-0.3.0.dmg"
+                sparkle:version="3"
+                sparkle:shortVersionString="0.3.0"
+                sparkle:edSignature="7o2vwr4A71a9T2ERN3BsIQlohXg/I54g2WRytf/1bJ+UOR1ZoSrbRjroIp6YNolqEi8Uh6T2Cu4ayCC9ANEOCA=="
+                length="16150542"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+        </item>
+        </items>
     </channel>
 </rss>
