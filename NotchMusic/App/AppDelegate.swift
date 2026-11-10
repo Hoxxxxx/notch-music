@@ -307,22 +307,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         )
         settingsItem.target = self
 
-        let connectItem = menu.addItem(
-            withTitle: "连接 Apple Music",
-            action: #selector(connectMusic),
-            keyEquivalent: ""
-        )
-        connectItem.target = self
-
-        let openMusicItem = menu.addItem(
-            withTitle: "打开 Apple Music",
-            action: #selector(openMusic),
-            keyEquivalent: ""
-        )
-        openMusicItem.target = self
-
-        menu.addItem(.separator())
-
         let quitItem = menu.addItem(
             withTitle: "退出 NotchMusic",
             action: #selector(quit),
@@ -463,15 +447,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         DispatchQueue.main.async { [weak self] in
             self?.settingsWindowController = nil
         }
-    }
-
-    @objc private func connectMusic() {
-        musicMonitor.connect()
-        panelController?.expandTemporarily(for: 3)
-    }
-
-    @objc private func openMusic() {
-        musicMonitor.openAppleMusic()
     }
 
     @objc private func quit() {
