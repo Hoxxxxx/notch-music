@@ -56,6 +56,8 @@ xcodebuild -project "$ROOT/NotchMusic.xcodeproj" \
     -scheme NotchMusic \
     -configuration Release \
     -destination 'generic/platform=macOS' \
+    -IDEPackageSupportDisableManifestSandbox=1 \
+    OTHER_SWIFT_FLAGS="-disable-sandbox" \
     CONFIGURATION_BUILD_DIR="$BUILD_DIR" \
     build >/dev/null
 
