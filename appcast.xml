@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>NotchMusic</title>
+        <link>https://github.com/Hoxxxxx/notch-music</link>
+        <description>NotchMusic 更新日志</description>
+        <language>zh-cn</language>
+        <items></items>
+    </channel>
+</rss>

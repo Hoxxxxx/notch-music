@@ -37,6 +37,7 @@
 		A1000000000000000000006C /* AirPodsPro.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006D /* AirPodsPro.usdz */; };
 		A1000000000000000000006E /* AirPods.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006F /* AirPods.usdz */; };
 		A10000000000000000000070 /* AirPodsMax.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000071 /* AirPodsMax.usdz */; };
+		A10000000000000000000072 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000073 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -79,6 +80,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000072 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,6 +205,9 @@
 			dependencies = (
 			);
 			name = NotchMusic;
+			packageProductDependencies = (
+				A10000000000000000000073 /* Sparkle */,
+			);
 			productName = NotchMusic;
 			productReference = A10000000000000000000009 /* NotchMusic.app */;
 			productType = "com.apple.product-type.application";
@@ -231,6 +236,9 @@
 				Base,
 			);
 			mainGroup = A10000000000000000000002;
+			packageReferences = (
+				A10000000000000000000074 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = A10000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -458,6 +466,26 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A10000000000000000000074 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A10000000000000000000073 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000074 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
+
 	};
 	rootObject = A10000000000000000000001 /* Project object */;
 }

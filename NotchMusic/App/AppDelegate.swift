@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import CoreText
+import Sparkle
 import SwiftUI
 
 enum MenuBarIconStyle: String, CaseIterable, Identifiable {
@@ -230,6 +231,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var panelController: NotchPanelController?
     private var settingsWindowController: NSWindowController?
     private var cancellables: Set<AnyCancellable> = []
+    private let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerBundledFonts()
@@ -306,6 +312,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             keyEquivalent: ","
         )
         settingsItem.target = self
+
+        let checkUpdatesItem = menu.addItem(
+            withTitle: "检查更新…",
+            action: #selector(checkForUpdates),
+            keyEquivalent: ""
+        )
+        checkUpdatesItem.target = self
 
         let quitItem = menu.addItem(
             withTitle: "退出 NotchMusic",
@@ -447,6 +460,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         DispatchQueue.main.async { [weak self] in
             self?.settingsWindowController = nil
         }
+    }
+
+    @objc private func checkForUpdates() {
+        updaterController.checkForUpdates(nil)
     }
 
     @objc private func quit() {

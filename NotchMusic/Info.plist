@@ -38,5 +38,11 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUPublicEDKey</key>
+	<string>c0afaiCSipjibzg5h3kZLqKMzCZhOiLIpNKumm85erA=</string>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/Hoxxxxx/notch-music/main/appcast.xml</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 </dict>
 </plist>
