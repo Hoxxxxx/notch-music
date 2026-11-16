@@ -7,6 +7,28 @@
         <language>zh-cn</language>
         <items>
         <item>
+            <title>Version 0.4.0</title>
+            <description><![CDATA[NotchMusic 0.4.0
+
+- 日历日期轮新增中心放大、两侧渐变缩小效果，修复刘海重新展开后当前日期偏移
+- 新增刘海宽度/高度手动校准，支持红色预览、应用/取消/恢复自动
+- HUD 音量图标固定左侧喇叭，仅弧形随音量变化；正常音量为白色，保留黄色/红色警示
+- 新增 Gradient Noir、Typograph 两款表盘
+- 移除像素字体，统一系统字体，减小应用体积
+- 最低系统要求提升至 macOS 26]]></description>
+            <pubDate>Mon, 16 Nov 2026 10:03:57 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.4.0/NotchMusic-0.4.0.dmg"
+                sparkle:version="4"
+                sparkle:shortVersionString="0.4.0"
+                sparkle:edSignature="rnYgSbGqPMP6LDqGG4E5u8y5OTln2KVC8xWcn6J99MF87NwZPiq1/qODq7juaEFbrWp9nU5YM0hpcoc8nuOQCA=="
+                length="16192302"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        </item>
+
+        <item>
             <title>Version 0.3.0</title>
             <description><![CDATA[新增自动更新功能，支持应用内检查更新]]></description>
             <pubDate>Tue, 10 Nov 2026 09:53:32 +0000</pubDate>
