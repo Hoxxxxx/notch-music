@@ -103,14 +103,14 @@ item = f'''        <item>
                 length="{length}"
                 type="application/octet-stream"
             />
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
         </item>
 '''
 s = open(path).read()
 if f'sparkle:shortVersionString="{version}"' in s:
     s = re.sub(r'        <item>\n(.*?</item>\n)', item, s, count=1, flags=re.S)
 else:
-    s = s.replace('<items></items>', '<items>\n' + item + '        </items>')
+    s = s.replace('<items>', '<items>\n' + item, 1)
 open(path, 'w').write(s)
 print("appcast.xml 已更新")
 PYEOF
