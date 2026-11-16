@@ -41,12 +41,14 @@ OLD_MARKETING=$(grep -m1 'MARKETING_VERSION = ' "$PBXPROJ" | sed 's/.*MARKETING_
 OLD_BUILD=$(grep -m1 'CURRENT_PROJECT_VERSION = ' "$PBXPROJ" | sed 's/.*CURRENT_PROJECT_VERSION = \(.*\);/\1/')
 NEW_BUILD=$((OLD_BUILD + 1))
 
+SED=/usr/bin/sed
+
 if [[ "$OLD_MARKETING" == "$VERSION" ]]; then
     echo "版本号已是 $VERSION，跳过 MARKETING_VERSION 更新"
 else
-    sed -i '' "s/MARKETING_VERSION = $OLD_MARKETING;/MARKETING_VERSION = $VERSION;/g" "$PBXPROJ"
+    "$SED" -i '' "s/MARKETING_VERSION = $OLD_MARKETING;/MARKETING_VERSION = $VERSION;/g" "$PBXPROJ"
 fi
-sed -i '' "s/CURRENT_PROJECT_VERSION = $OLD_BUILD;/CURRENT_PROJECT_VERSION = $NEW_BUILD;/g" "$PBXPROJ"
+"$SED" -i '' "s/CURRENT_PROJECT_VERSION = $OLD_BUILD;/CURRENT_PROJECT_VERSION = $NEW_BUILD;/g" "$PBXPROJ"
 echo "版本: $VERSION (build $NEW_BUILD)"
 
 # ---------- 2. 构建 Release ----------
@@ -119,15 +121,20 @@ cd "$ROOT"
 git add appcast.xml NotchMusic.xcodeproj/project.pbxproj
 git commit -m "Release $VERSION (build $NEW_BUILD)" || true
 git push origin main
+git tag -f "$TAG"
+git push origin "$TAG" 2>/dev/null || true
 
 echo "==> 创建 GitHub Release..."
-if command -v gh >/dev/null; then
+if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
     gh release create "$TAG" "$DMG_PATH" \
         --repo "$REPO" \
         --title "$TAG" \
         --notes "$NOTES"
 else
-    echo "未安装 gh，请手动创建 Release 并上传 $DMG_PATH"
+    echo "gh 不可用或未登录，Release 需手动创建:"
+    echo "  gh auth login   (登录后运行下方命令)"
+    echo "  gh release create $TAG \"$DMG_PATH\" --repo $REPO --title \"$TAG\" --notes \"$NOTES\""
+    echo "  或到 GitHub 网页 Releases -> Draft a new release，选择已推送的 tag $TAG 并上传 $DMG_PATH"
 fi
 
 echo ""

@@ -15,6 +15,8 @@ enum WatchFaceStyle: String, CaseIterable, Identifiable {
     case rainbowMosaic
     case rainbowGlow
     case rainbowConfetti
+    case gradientNoir
+    case typograph
     case customImage
 
     static let storageKey = "NotchMusic.watchFaceStyle"
@@ -47,6 +49,10 @@ enum WatchFaceStyle: String, CaseIterable, Identifiable {
             return "彩虹光辉"
         case .rainbowConfetti:
             return "彩虹庆典"
+        case .gradientNoir:
+            return "渐变黑"
+        case .typograph:
+            return "排版"
         case .customImage:
             return "自定义图片"
         }
@@ -299,6 +305,10 @@ struct WatchFaceView: View {
             RainbowGlowWatchFace(time: time)
         case .rainbowConfetti:
             RainbowConfettiWatchFace(time: time)
+        case .gradientNoir:
+            GradientNoirWatchFace(time: time)
+        case .typograph:
+            TypographWatchFace(time: time)
         case .customImage:
             CustomImageWatchFace(time: time, accent: accent)
         }
@@ -499,6 +509,222 @@ private struct ClassicWatchDial: View {
                 lineWidth: 1.2
             )
         }
+    }
+
+    private func point(
+        from center: CGPoint,
+        angle: Double,
+        radius: CGFloat
+    ) -> CGPoint {
+        CGPoint(
+            x: center.x + cos(angle) * radius,
+            y: center.y + sin(angle) * radius
+        )
+    }
+
+    private func handPath(
+        from center: CGPoint,
+        angle: Double,
+        length: CGFloat
+    ) -> Path {
+        var path = Path()
+        path.move(to: center)
+        path.addLine(to: point(from: center, angle: angle, radius: length))
+        return path
+    }
+}
+
+private struct GradientNoirWatchFace: View {
+    let time: WatchFaceTime
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                stops: [
+                    .init(color: Color(white: 0.30), location: 0),
+                    .init(color: Color(white: 0.15), location: 0.48),
+                    .init(color: Color(white: 0.02), location: 1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            RadialGradient(
+                colors: [
+                    Color(white: 0.46).opacity(0.38),
+                    .clear
+                ],
+                center: UnitPoint(x: 0.52, y: 0.10),
+                startRadius: 0,
+                endRadius: 64
+            )
+
+            RadialGradient(
+                colors: [
+                    .clear,
+                    Color.black.opacity(0.55)
+                ],
+                center: UnitPoint(x: 0.70, y: 0.80),
+                startRadius: 8,
+                endRadius: 72
+            )
+
+            Canvas { context, size in
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                let radius = min(size.width, size.height) / 2
+
+                context.stroke(
+                    handPath(
+                        from: center,
+                        angle: time.hourAngle,
+                        length: radius * 0.48
+                    ),
+                    with: .color(Color(white: 0.84)),
+                    style: StrokeStyle(lineWidth: 3.2, lineCap: .round)
+                )
+                context.stroke(
+                    handPath(
+                        from: center,
+                        angle: time.minuteAngle,
+                        length: radius * 0.82
+                    ),
+                    with: .color(Color(white: 0.93)),
+                    style: StrokeStyle(lineWidth: 2.6, lineCap: .round)
+                )
+
+                let capRect = CGRect(
+                    x: center.x - 2.4,
+                    y: center.y - 2.4,
+                    width: 4.8,
+                    height: 4.8
+                )
+                context.fill(
+                    Path(ellipseIn: capRect),
+                    with: .color(Color(white: 0.08))
+                )
+                context.stroke(
+                    Path(ellipseIn: capRect),
+                    with: .color(Color(white: 0.70)),
+                    lineWidth: 0.7
+                )
+            }
+        }
+        .watchFaceSurface()
+    }
+
+    private func handPath(
+        from center: CGPoint,
+        angle: Double,
+        length: CGFloat
+    ) -> Path {
+        var path = Path()
+        path.move(to: center)
+        path.addLine(
+            to: CGPoint(
+                x: center.x + cos(angle) * length,
+                y: center.y + sin(angle) * length
+            )
+        )
+        return path
+    }
+}
+
+private struct TypographWatchFace: View {
+    let time: WatchFaceTime
+
+    private let paper = Color(white: 0.03)
+    private let ink = Color(white: 0.96)
+    private let outline = Color(white: 0.10)
+    private let accentRed = Color(red: 0.87, green: 0.18, blue: 0.14)
+
+    var body: some View {
+        ZStack {
+            paper
+
+            numeral("12", size: 48, x: 46, y: 21)
+            numeral("9", size: 54, x: 8, y: 50)
+            numeral("3", size: 54, x: 80, y: 50)
+            numeral("6", size: 52, x: 44, y: 79)
+
+            Canvas { context, size in
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                let radius = min(size.width, size.height) / 2
+
+                let hourHand = handPath(
+                    from: center,
+                    angle: time.hourAngle,
+                    length: radius * 0.52
+                )
+                context.stroke(
+                    hourHand,
+                    with: .color(outline),
+                    style: StrokeStyle(lineWidth: 5.0, lineCap: .round)
+                )
+                context.stroke(
+                    hourHand,
+                    with: .color(Color(white: 0.97)),
+                    style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
+                )
+
+                let minuteHand = handPath(
+                    from: center,
+                    angle: time.minuteAngle,
+                    length: radius * 0.82
+                )
+                context.stroke(
+                    minuteHand,
+                    with: .color(outline),
+                    style: StrokeStyle(lineWidth: 4.3, lineCap: .round)
+                )
+                context.stroke(
+                    minuteHand,
+                    with: .color(Color(white: 0.97)),
+                    style: StrokeStyle(lineWidth: 2.9, lineCap: .round)
+                )
+
+                var secondHand = Path()
+                secondHand.move(
+                    to: point(
+                        from: center,
+                        angle: time.secondAngle,
+                        radius: -5
+                    )
+                )
+                secondHand.addLine(
+                    to: point(
+                        from: center,
+                        angle: time.secondAngle,
+                        radius: radius * 0.76
+                    )
+                )
+                context.stroke(
+                    secondHand,
+                    with: .color(accentRed),
+                    style: StrokeStyle(lineWidth: 1.0, lineCap: .round)
+                )
+
+                let capRect = CGRect(
+                    x: center.x - 2.1,
+                    y: center.y - 2.1,
+                    width: 4.2,
+                    height: 4.2
+                )
+                context.fill(Path(ellipseIn: capRect), with: .color(accentRed))
+            }
+        }
+        .watchFaceSurface()
+    }
+
+    private func numeral(
+        _ text: String,
+        size: CGFloat,
+        x: CGFloat,
+        y: CGFloat
+    ) -> some View {
+        Text(text)
+            .font(.custom("Didot", size: size))
+            .foregroundStyle(ink)
+            .position(x: x, y: y)
     }
 
     private func point(

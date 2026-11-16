@@ -202,7 +202,17 @@ struct NotchSideSystemHUDView: View {
     private var progressFill: AnyShapeStyle {
         presentation.control != .volume && lightingStyle == .glow
             ? SoundHUDAppearance.lightingBeamStyle(vertical: false)
-            : AnyShapeStyle(color)
+            : AnyShapeStyle(soundFillColor)
+    }
+
+    private var soundFillColor: Color {
+        presentation.control == .volume
+            ? SoundHUDAppearance.volumeForegroundColor(
+                for: soundStyle,
+                accent: albumAccent,
+                level: presentation.level
+            )
+            : color
     }
 }
 
@@ -441,7 +451,7 @@ struct SystemHUDView: View {
                                 )
                             )
                             .monospacedDigit()
-                            .foregroundStyle(color)
+                            .foregroundStyle(soundFillColor)
                             .contentTransition(.numericText())
                     }
                 }
@@ -502,11 +512,24 @@ struct SystemHUDView: View {
         }
         return AnyShapeStyle(
             LinearGradient(
-                colors: [color.opacity(0.66), color],
+                colors: [
+                    soundFillColor.opacity(0.66),
+                    soundFillColor
+                ],
                 startPoint: .leading,
                 endPoint: .trailing
             )
         )
+    }
+
+    private var soundFillColor: Color {
+        presentation.control == .volume
+            ? SoundHUDAppearance.volumeForegroundColor(
+                for: soundStyle,
+                accent: albumAccent,
+                level: presentation.level
+            )
+            : color
     }
 
     private var fineBadge: some View {
@@ -567,6 +590,33 @@ enum SoundHUDAppearance {
         }
 
         return Color(hue: hue, saturation: 0.95, brightness: 1.0)
+    }
+
+    static func volumeForegroundColor(
+        for style: SoundHUDStyle,
+        accent: Color,
+        level: Double
+    ) -> Color {
+        switch style {
+        case .white:
+            return .white
+        case .accent:
+            return accent
+        case .decibel:
+            let level = min(max(level, 0), 1)
+            if level <= 0.55 {
+                return .white
+            }
+            if level < 0.60 {
+                let saturation = 0.95 * (level - 0.55) / 0.05
+                return Color(
+                    hue: 0.26,
+                    saturation: saturation,
+                    brightness: 1.0
+                )
+            }
+            return decibelColor(for: level)
+        }
     }
 
     static func lightingColor(
@@ -660,7 +710,8 @@ enum SoundHUDAppearance {
                 return model.systemImage
             }
             if content == .device,
-               let device = SoundOutputDevice.current() {
+               let device = SoundOutputDevice.current(),
+               device.kind == .headphones || device.kind == .display {
                 return device.symbolName
             }
         }
@@ -708,12 +759,30 @@ private struct SoundHUDIcon: View {
                     .frame(width: size, height: size)
                     .scaleEffect(showsBadge ? 0.88 : 1)
                     .allowsHitTesting(false)
+            } else if control == .volume {
+                ZStack(alignment: .leading) {
+                    Image(systemName: "speaker.3.fill")
+                        .font(symbolFont)
+                        .hidden()
+
+                    Image(systemName: "speaker.slash.fill")
+                        .font(symbolFont)
+                        .hidden()
+
+                    Image(systemName: symbolName)
+                        .font(symbolFont)
+                        .foregroundStyle(.white)
+                }
             } else {
                 Image(systemName: symbolName)
-                    .font(.system(size: size * symbolScale, weight: .semibold))
-                    .foregroundStyle(control == .volume ? .white : color)
+                    .font(symbolFont)
+                    .foregroundStyle(color)
             }
         }
         .frame(width: size, height: size)
+    }
+
+    private var symbolFont: Font {
+        .system(size: size * symbolScale, weight: .semibold)
     }
 }

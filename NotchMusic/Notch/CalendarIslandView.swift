@@ -3,10 +3,8 @@ import EventKit
 import SwiftUI
 
 private enum CalendarPixelTypography {
-    static let pixel = "Fusion-Pixel-12px-Prop-zh-Hans-Regular"
-
     static func font(size: CGFloat) -> Font {
-        .custom(pixel, fixedSize: size)
+        .system(size: size)
     }
 }
 
@@ -45,6 +43,11 @@ private final class CalendarMonitor: ObservableObject {
     private let store = EKEventStore()
     private var selectedDate = Date()
     private var storeObserver: NSObjectProtocol?
+    private let fetchQueue = DispatchQueue(
+        label: "NotchMusic.calendarFetch",
+        qos: .userInitiated
+    )
+    private var fetchGeneration = 0
 
     init() {
         storeObserver = NotificationCenter.default.addObserver(
@@ -124,43 +127,55 @@ private final class CalendarMonitor: ObservableObject {
     }
 
     private func fetchEvents(for date: Date) {
+        fetchGeneration &+= 1
+        let generation = fetchGeneration
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: date)
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else {
             events = []
             return
         }
+        let store = self.store
 
-        let predicate = store.predicateForEvents(
-            withStart: start,
-            end: end,
-            calendars: nil
-        )
+        fetchQueue.async { [weak self] in
+            let predicate = store.predicateForEvents(
+                withStart: start,
+                end: end,
+                calendars: nil
+            )
+            let matching = store.events(matching: predicate)
 
-        events = store.events(matching: predicate)
-            .map { event in
-                CalendarEventItem(
-                    id: "\(event.eventIdentifier ?? UUID().uuidString)-\(event.startDate.timeIntervalSince1970)",
-                    title: event.title?.isEmpty == false
-                        ? event.title
-                        : "未命名日程",
-                    start: event.startDate,
-                    end: event.endDate,
-                    isAllDay: event.isAllDay,
-                    color: NSColor(cgColor: event.calendar.cgColor)
-                        ?? .systemBlue,
-                    calendarName: event.calendar.title,
-                    location: event.location?.isEmpty == false
-                        ? event.location
-                        : nil
-                )
-            }
-            .sorted { lhs, rhs in
-                if lhs.isAllDay != rhs.isAllDay {
-                    return lhs.isAllDay
+            Task { @MainActor [weak self] in
+                guard let self,
+                      self.fetchGeneration == generation else {
+                    return
                 }
-                return lhs.start < rhs.start
+                self.events = matching
+                    .map { event in
+                        CalendarEventItem(
+                            id: "\(event.eventIdentifier ?? UUID().uuidString)-\(event.startDate.timeIntervalSince1970)",
+                            title: event.title?.isEmpty == false
+                                ? event.title
+                                : "未命名日程",
+                            start: event.startDate,
+                            end: event.endDate,
+                            isAllDay: event.isAllDay,
+                            color: NSColor(cgColor: event.calendar.cgColor)
+                                ?? .systemBlue,
+                            calendarName: event.calendar.title,
+                            location: event.location?.isEmpty == false
+                                ? event.location
+                                : nil
+                        )
+                    }
+                    .sorted { lhs, rhs in
+                        if lhs.isAllDay != rhs.isAllDay {
+                            return lhs.isAllDay
+                        }
+                        return lhs.start < rhs.start
+                    }
             }
+        }
     }
 }
 
@@ -169,6 +184,7 @@ struct CalendarIslandView: View {
 
     @StateObject private var monitor = CalendarMonitor()
     @State private var selectedDate = Date()
+    @State private var eventLoadTask: Task<Void, Never>?
     @Environment(\.openURL) private var openURL
 
     private static let yearFormatter: DateFormatter = {
@@ -230,7 +246,10 @@ struct CalendarIslandView: View {
             }
         }
         .onChange(of: selectedDate) { _, newDate in
-            Task {
+            eventLoadTask?.cancel()
+            eventLoadTask = Task {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                guard !Task.isCancelled else { return }
                 await monitor.load(for: newDate)
             }
         }
@@ -253,6 +272,10 @@ struct CalendarIslandView: View {
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white.opacity(0.46))
                 .contentTransition(.numericText())
+                .animation(
+                    .easeInOut(duration: 0.16),
+                    value: selectedDate
+                )
 
             Spacer(minLength: 0)
 
@@ -260,6 +283,10 @@ struct CalendarIslandView: View {
                 .font(CalendarPixelTypography.font(size: 30))
                 .foregroundStyle(.white)
                 .contentTransition(.numericText())
+                .animation(
+                    .easeInOut(duration: 0.16),
+                    value: selectedDate
+                )
 
             Spacer(minLength: 0)
 
@@ -268,11 +295,11 @@ struct CalendarIslandView: View {
                 accent: accent
             )
             .frame(height: 44)
+            .padding(.top, 12)
 
             Spacer(minLength: 0)
         }
         .frame(maxHeight: .infinity)
-        .animation(.easeInOut(duration: 0.16), value: selectedDate)
     }
 
     private var eventPane: some View {
@@ -450,14 +477,22 @@ private struct CalendarDateWheel: View {
     @Binding var selectedDate: Date
     let accent: Color
 
+    private static let accessibilityDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月d日"
+        return formatter
+    }()
+
     @State private var scrollPosition: Int?
     @State private var hasAppeared = false
 
     private let calendar = Calendar.current
     private let cellWidth: CGFloat = 42
+    private let cellHeight: CGFloat = 44
+    private let wheelHeight: CGFloat = 60
     private let pastDays = 365
     private let futureDays = 365
-    private let spacerCount = 2
 
     var body: some View {
         GeometryReader { geometry in
@@ -468,27 +503,40 @@ private struct CalendarDateWheel: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: 0) {
-                    ForEach(0..<totalItemCount, id: \.self) { index in
-                        if isDateIndex(index) {
-                            dateButton(
-                                date: dateForItemIndex(index),
-                                index: index
+                    ForEach(0..<dateCount, id: \.self) { index in
+                        dateButton(
+                            date: dateForItemIndex(index),
+                            index: index
+                        )
+                        .visualEffect { content, proxy in
+                            let frame = proxy.frame(
+                                in: .named("calendarDateWheel")
                             )
-                            .id(index)
-                        } else {
-                            Color.clear
-                                .frame(width: cellWidth, height: 1)
-                                .id(index)
+                            let distance = abs(
+                                frame.midX - geometry.size.width / 2
+                            )
+                            let focus = dateFocus(for: distance)
+                            return content
+                                .scaleEffect(0.7 + focus * 0.7)
+                                .opacity(0.5 + focus * 0.5)
                         }
+                        .id(index)
                     }
                 }
-                .frame(height: 44)
+                .frame(height: wheelHeight)
                 .scrollTargetLayout()
             }
             .scrollIndicators(.never)
-            .safeAreaPadding(.horizontal, sidePadding)
-            .scrollPosition(id: $scrollPosition, anchor: .center)
+            .contentMargins(
+                .horizontal,
+                sidePadding,
+                for: .scrollContent
+            )
+            .coordinateSpace(name: "calendarDateWheel")
             .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $scrollPosition, anchor: .center)
+            .frame(height: wheelHeight)
+            .offset(y: (cellHeight - wheelHeight) / 2)
             .simultaneousGesture(
                 SpatialTapGesture(coordinateSpace: .local)
                     .onEnded { value in
@@ -507,11 +555,12 @@ private struct CalendarDateWheel: View {
             .onChange(of: scrollPosition) { _, newValue in
                 guard hasAppeared,
                       let newValue,
-                      isDateIndex(newValue) else {
+                      (0..<dateCount).contains(newValue) else {
                     return
                 }
                 let date = dateForItemIndex(newValue)
-                guard !calendar.isDate(date, inSameDayAs: selectedDate) else {
+                guard !calendar.isDate(date, inSameDayAs: selectedDate)
+                else {
                     return
                 }
                 selectedDate = date
@@ -528,11 +577,15 @@ private struct CalendarDateWheel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func dateFocus(for distance: CGFloat) -> CGFloat {
+        max(0, 1 - distance / 88)
+    }
+
     private func selectDate(at x: CGFloat, width: CGFloat) {
         let centerIndex = scrollPosition ?? indexForDate(selectedDate)
         let offset = Int(round((x - width / 2) / cellWidth))
         let target = centerIndex + offset
-        guard isDateIndex(target) else { return }
+        guard (0..<dateCount).contains(target) else { return }
 
         let date = dateForItemIndex(target)
         withAnimation(.easeOut(duration: 0.16)) {
@@ -558,16 +611,12 @@ private struct CalendarDateWheel: View {
                     .font(.system(size: 8, weight: .medium))
                     .foregroundStyle(
                         isSelected
-                            ? Color.white.opacity(0.82)
+                            ? accent.opacity(0.82)
                             : Color.white.opacity(0.34)
                     )
 
                 ZStack {
-                    if isSelected {
-                        Circle()
-                            .fill(accent)
-                            .frame(width: 26, height: 26)
-                    } else if isToday {
+                    if isToday && !isSelected {
                         Circle()
                             .stroke(accent.opacity(0.7), lineWidth: 0.8)
                             .frame(width: 26, height: 26)
@@ -583,7 +632,7 @@ private struct CalendarDateWheel: View {
                         )
                         .foregroundStyle(
                             isSelected
-                                ? Color.white
+                                ? accent
                                 : isToday
                                     ? accent
                                     : Color.white.opacity(0.72)
@@ -591,24 +640,18 @@ private struct CalendarDateWheel: View {
                 }
                 .frame(width: 28, height: 28)
             }
-            .frame(width: cellWidth, height: 44)
+            .frame(width: cellWidth, height: cellHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(
-            date.formatted(
-                .dateTime.year().month().day()
-            )
+            Self.accessibilityDateFormatter.string(from: date)
         )
     }
 
     private var dateCount: Int {
         pastDays + futureDays + 1
-    }
-
-    private var totalItemCount: Int {
-        dateCount + spacerCount * 2
     }
 
     private var baseDate: Date {
@@ -620,14 +663,10 @@ private struct CalendarDateWheel: View {
         ) ?? today
     }
 
-    private func isDateIndex(_ index: Int) -> Bool {
-        (spacerCount..<(spacerCount + dateCount)).contains(index)
-    }
-
     private func dateForItemIndex(_ index: Int) -> Date {
         calendar.date(
             byAdding: .day,
-            value: index - spacerCount,
+            value: index,
             to: baseDate
         ) ?? baseDate
     }
@@ -639,7 +678,7 @@ private struct CalendarDateWheel: View {
             from: baseDate,
             to: target
         ).day ?? 0
-        return spacerCount + min(max(days, 0), dateCount - 1)
+        return min(max(days, 0), dateCount - 1)
     }
 
     private func weekdaySymbol(for date: Date) -> String {
@@ -651,7 +690,7 @@ private struct CalendarDateWheel: View {
 
     private func performHaptic() {
         NSHapticFeedbackManager.defaultPerformer.perform(
-            .alignment,
+            .generic,
             performanceTime: .now
         )
     }

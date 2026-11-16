@@ -28,8 +28,6 @@
 		A10000000000000000000053 /* MultiAvatarRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000058 /* MultiAvatarRenderer.swift */; };
 		A10000000000000000000054 /* multiavatar.min.js in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000055 /* multiavatar.min.js */; };
 		A10000000000000000000056 /* Multiavatar-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000059 /* Multiavatar-LICENSE.txt */; };
-		A10000000000000000000060 /* fusion-pixel-12px-proportional-zh_hans.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000062 /* fusion-pixel-12px-proportional-zh_hans.ttf */; };
-		A10000000000000000000061 /* FusionPixel-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000063 /* FusionPixel-OFL.txt */; };
 		A10000000000000000000065 /* LockScreenIslandController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000064 /* LockScreenIslandController.swift */; };
 		A10000000000000000000066 /* CalendarIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000067 /* CalendarIslandView.swift */; };
 		A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000069 /* DeviceConnectionMonitor.swift */; };
@@ -64,8 +62,6 @@
 		A10000000000000000000055 /* multiavatar.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = multiavatar.min.js; sourceTree = "<group>"; };
 		A10000000000000000000058 /* MultiAvatarRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiAvatarRenderer.swift; sourceTree = "<group>"; };
 		A10000000000000000000059 /* Multiavatar-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Multiavatar-LICENSE.txt"; sourceTree = "<group>"; };
-		A10000000000000000000062 /* fusion-pixel-12px-proportional-zh_hans.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "fusion-pixel-12px-proportional-zh_hans.ttf"; sourceTree = "<group>"; };
-		A10000000000000000000063 /* FusionPixel-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "FusionPixel-OFL.txt"; sourceTree = "<group>"; };
 		A10000000000000000000064 /* LockScreenIslandController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenIslandController.swift; sourceTree = "<group>"; };
 		A10000000000000000000067 /* CalendarIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarIslandView.swift; sourceTree = "<group>"; };
 		A10000000000000000000069 /* DeviceConnectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConnectionMonitor.swift; sourceTree = "<group>"; };
@@ -180,8 +176,6 @@
 			children = (
 				A10000000000000000000055 /* multiavatar.min.js */,
 				A10000000000000000000059 /* Multiavatar-LICENSE.txt */,
-				A10000000000000000000062 /* fusion-pixel-12px-proportional-zh_hans.ttf */,
-				A10000000000000000000063 /* FusionPixel-OFL.txt */,
 				A1000000000000000000006D /* AirPodsPro.usdz */,
 				A1000000000000000000006F /* AirPods.usdz */,
 				A10000000000000000000071 /* AirPodsMax.usdz */,
@@ -256,8 +250,6 @@
 				A1000000000000000000004A /* Assets.xcassets in Resources */,
 				A10000000000000000000054 /* multiavatar.min.js in Resources */,
 				A10000000000000000000056 /* Multiavatar-LICENSE.txt in Resources */,
-				A10000000000000000000060 /* fusion-pixel-12px-proportional-zh_hans.ttf in Resources */,
-				A10000000000000000000061 /* FusionPixel-OFL.txt in Resources */,
 				A1000000000000000000006C /* AirPodsPro.usdz in Resources */,
 				A1000000000000000000006E /* AirPods.usdz in Resources */,
 				A10000000000000000000070 /* AirPodsMax.usdz in Resources */,
@@ -339,7 +331,7 @@
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -383,7 +375,7 @@
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -407,7 +399,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.hoxxxxx.NotchMusic;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -434,7 +426,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 0.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = io.github.hoxxxxx.NotchMusic;
 				PRODUCT_NAME = "$(TARGET_NAME)";

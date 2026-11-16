@@ -141,6 +141,9 @@ struct SettingsView: View {
     @State private var selectedMusicControlSlot: Int?
     @State private var watchFaceCropEditor: WatchFaceCropEditorState?
     @State private var watchFaceImageError: String?
+    @State private var draftNotchWidthAdjustment = 0
+    @State private var draftNotchHeightAdjustment = 0
+    @State private var isNotchPreviewing = false
     @FocusState private var isEmojiFieldFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -245,6 +248,16 @@ struct SettingsView: View {
     private var microphoneDetectionEnabled = true
     @AppStorage(NotchLayout.physicalNotchOutline)
     private var showsPhysicalNotchOutline = false
+    @AppStorage(NotchLayout.notchWidthAdjustment)
+    private var notchWidthAdjustmentValue = 0
+    @AppStorage(NotchLayout.notchHeightAdjustment)
+    private var notchHeightAdjustmentValue = 0
+    @AppStorage(NotchLayout.notchPreviewWidth)
+    private var notchPreviewWidthValue = 0
+    @AppStorage(NotchLayout.notchPreviewHeight)
+    private var notchPreviewHeightValue = 0
+    @AppStorage(NotchLayout.notchPreviewActive)
+    private var notchPreviewActiveValue = false
     @AppStorage(MenuBarIconStyle.storageKey)
     private var menuBarIconStyleRaw = MenuBarIconStyle.notch.rawValue
     @AppStorage(ApplicationIconStyle.storageKey)
@@ -302,6 +315,12 @@ struct SettingsView: View {
             musicMonitor.refreshNow()
             systemActivityMonitor.refreshNow()
             systemHUDController.refreshAvailability()
+            draftNotchWidthAdjustment = notchWidthAdjustmentValue
+            draftNotchHeightAdjustment = notchHeightAdjustmentValue
+            endNotchPreview()
+        }
+        .onDisappear {
+            endNotchPreview()
         }
         .onChange(of: selectedCategory) { _, category in
             SettingsView.lastSelectedCategory = category
@@ -1019,7 +1038,7 @@ struct SettingsView: View {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
                 guard !Task.isCancelled else { return }
-                soundIconPreviewIndex = (soundIconPreviewIndex + 1) % 3
+                soundIconPreviewIndex = (soundIconPreviewIndex + 1) % 4
             }
         }
         .task(
@@ -1743,7 +1762,145 @@ struct SettingsView: View {
                 systemImage: "rectangle.dashed",
                 isOn: $showsPhysicalNotchOutline
             )
+
+            Divider()
+                .opacity(0.5)
+
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("刘海尺寸校准")
+                        .font(.system(size: 11.5, weight: .medium))
+
+                    Spacer()
+
+                    Text(isNotchPreviewing ? "预览中" : "自动")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(
+                            isNotchPreviewing ? Color.red : Color.secondary
+                        )
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            isNotchPreviewing
+                                ? Color.red.opacity(0.12)
+                                : Color.primary.opacity(0.07),
+                            in: Capsule()
+                        )
+                }
+
+                notchAdjustmentSlider(
+                    title: "宽度",
+                    value: $draftNotchWidthAdjustment,
+                    limit: NotchLayout.notchWidthAdjustmentLimit
+                )
+
+                notchAdjustmentSlider(
+                    title: "高度",
+                    value: $draftNotchHeightAdjustment,
+                    limit: NotchLayout.notchHeightAdjustmentLimit
+                )
+
+                Text("拖动时屏幕顶部会显示红色预览框，确认无误后点「应用」才会生效。")
+                    .settingsCaption()
+
+                HStack(spacing: 8) {
+                    Button("恢复自动") {
+                        draftNotchWidthAdjustment = 0
+                        draftNotchHeightAdjustment = 0
+                    }
+                    .controlSize(.small)
+                    .disabled(
+                        draftNotchWidthAdjustment == 0
+                            && draftNotchHeightAdjustment == 0
+                    )
+
+                    Spacer()
+
+                    Button("取消") {
+                        cancelNotchPreview()
+                    }
+                    .controlSize(.small)
+                    .disabled(!isNotchPreviewing)
+
+                    Button("应用") {
+                        applyNotchPreview()
+                    }
+                    .controlSize(.small)
+                    .disabled(!isNotchPreviewing)
+                }
+            }
+            .onChange(of: draftNotchWidthAdjustment) { _, _ in
+                updateNotchPreview()
+            }
+            .onChange(of: draftNotchHeightAdjustment) { _, _ in
+                updateNotchPreview()
+            }
         }
+    }
+
+    private func notchAdjustmentSlider(
+        title: String,
+        value: Binding<Int>,
+        limit: Int
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(
+                    value.wrappedValue == 0
+                        ? "自动"
+                        : String(format: "%+d pt", value.wrappedValue)
+                )
+                .font(.system(size: 10.5, weight: .semibold))
+                .monospacedDigit()
+            }
+
+            Slider(
+                value: Binding(
+                    get: { Double(value.wrappedValue) },
+                    set: { value.wrappedValue = Int($0.rounded()) }
+                ),
+                in: -Double(limit)...Double(limit),
+                step: 1
+            )
+            .tint(.accentColor)
+        }
+    }
+
+    private func updateNotchPreview() {
+        guard draftNotchWidthAdjustment != notchWidthAdjustmentValue
+                || draftNotchHeightAdjustment != notchHeightAdjustmentValue
+        else {
+            endNotchPreview()
+            return
+        }
+
+        isNotchPreviewing = true
+        notchPreviewWidthValue = draftNotchWidthAdjustment
+        notchPreviewHeightValue = draftNotchHeightAdjustment
+        notchPreviewActiveValue = true
+    }
+
+    private func endNotchPreview() {
+        isNotchPreviewing = false
+        notchPreviewActiveValue = false
+    }
+
+    private func cancelNotchPreview() {
+        draftNotchWidthAdjustment = notchWidthAdjustmentValue
+        draftNotchHeightAdjustment = notchHeightAdjustmentValue
+        endNotchPreview()
+    }
+
+    private func applyNotchPreview() {
+        notchWidthAdjustmentValue = draftNotchWidthAdjustment
+        notchHeightAdjustmentValue = draftNotchHeightAdjustment
+        endNotchPreview()
     }
 
     private var progressTrackSection: some View {
@@ -3759,7 +3916,20 @@ private struct SoundDeviceIconCarousel: View {
 
     var body: some View {
         ZStack {
-            if !models.isEmpty {
+            if index % (models.count + 1) == models.count {
+                Image(systemName: "speaker.2.fill")
+                    .font(.system(size: size * 0.68, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .transition(
+                        .asymmetric(
+                            insertion: .scale(scale: 0.74, anchor: .center)
+                                .combined(with: .opacity),
+                            removal: .scale(scale: 0.86, anchor: .center)
+                                .combined(with: .opacity)
+                        )
+                    )
+                    .allowsHitTesting(false)
+            } else if !models.isEmpty {
                 let model = models[index % models.count]
                 AirPods3DView(model: model, framesPerSecond: 30)
                     .id(model)
@@ -3806,7 +3976,7 @@ private struct SoundSymbolCarousel: View {
         let ordered = preferred.map { first in
             [first] + models.filter { $0 != first }
         } ?? models
-        return ordered.map(\.systemImage)
+        return ordered.map(\.systemImage) + ["speaker.2.fill"]
     }
 
     var body: some View {

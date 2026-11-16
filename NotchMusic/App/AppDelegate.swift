@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import CoreText
 import Sparkle
 import SwiftUI
 
@@ -238,11 +237,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        registerBundledFonts()
         MusicControlLayoutSettings.migrateStoredValueIfNeeded()
         SoundHUDSettings.migrateColoredVolumePreferenceIfNeeded()
         ApplicationIconStyle.migrateStoredValueIfNeeded()
         SystemHUDStyle.migrateRemovedStylesIfNeeded()
+        UserDefaults.standard.set(
+            false,
+            forKey: NotchLayout.notchPreviewActive
+        )
         NSApp.setActivationPolicy(.accessory)
         applyApplicationIcon()
 
@@ -275,17 +277,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             UserDefaults.standard.set(true, forKey: "NotchMusic.hasShownWelcome")
             panelController?.expandTemporarily()
         }
-    }
-
-    private func registerBundledFonts() {
-        guard let fontURL = Bundle.main.url(
-            forResource: "fusion-pixel-12px-proportional-zh_hans",
-            withExtension: "ttf"
-        ) else {
-            return
-        }
-
-        CTFontManagerRegisterFontsForURL(fontURL as CFURL, .process, nil)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

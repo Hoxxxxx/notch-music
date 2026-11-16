@@ -220,10 +220,8 @@ private enum ContentPageTransitionDirection {
 }
 
 private enum PixelTypography {
-    static let pixel = "Fusion-Pixel-12px-Prop-zh-Hans-Regular"
-
     static func font(size: CGFloat) -> Font {
-        .custom(pixel, fixedSize: size)
+        .system(size: size)
     }
 }
 
@@ -279,6 +277,16 @@ struct NotchView: View {
     private var capsLockColorRaw = CapsLockIndicatorColor.blue.rawValue
     @AppStorage(NotchLayout.physicalNotchOutline)
     private var showsPhysicalNotchOutline = false
+    @AppStorage(NotchLayout.notchWidthAdjustment)
+    private var notchWidthAdjustment = 0
+    @AppStorage(NotchLayout.notchHeightAdjustment)
+    private var notchHeightAdjustment = 0
+    @AppStorage(NotchLayout.notchPreviewWidth)
+    private var notchPreviewWidth = 0
+    @AppStorage(NotchLayout.notchPreviewHeight)
+    private var notchPreviewHeight = 0
+    @AppStorage(NotchLayout.notchPreviewActive)
+    private var isNotchPreviewActive = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var suppressedCompactPresentations:
         Set<CompactPresentation> = []
@@ -358,7 +366,7 @@ struct NotchView: View {
             ? hudTopCornerRadius
             : usesExpandedLayout
             ? NotchLayout.expandedTopCornerRadius
-            : showsNotchSideHUD ? 10 : 6
+            : 10
         let bottomCornerRadius: CGFloat = showsExpandedHUD
             ? 22
             : usesExpandedLayout
@@ -507,7 +515,7 @@ struct NotchView: View {
                                 .transition(expandedContentTransition)
                             } else {
                                 expandedPageContent(width: size.width)
-                                    .transition(expandedContentTransition)
+                                    .transition(pageContentTransition)
                                     .animation(
                                         contentRevealAnimation,
                                         value: panelState.isExpanded
@@ -674,7 +682,13 @@ struct NotchView: View {
                 }
             }
             .overlay(alignment: .topLeading) {
-                if showsPhysicalNotchOutline {
+                if isNotchPreviewActive {
+                    notchPreview(
+                        width: size.width,
+                        topCornerRadius: topCornerRadius,
+                        bottomCornerRadius: bottomCornerRadius
+                    )
+                } else if showsPhysicalNotchOutline {
                     physicalNotchOutline(width: size.width)
                 }
             }
@@ -859,6 +873,27 @@ struct NotchView: View {
         )
     }
 
+    private var pageContentTransition: AnyTransition {
+        selectedContentPage == .calendar
+            ? expandedContentFadeTransition
+            : expandedContentTransition
+    }
+
+    private var expandedContentFadeTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+
+        return .asymmetric(
+            insertion: AnyTransition.modifier(
+                active: NotchBlurTransitionModifier(radius: 7),
+                identity: NotchBlurTransitionModifier(radius: 0)
+            )
+            .combined(with: .opacity),
+            removal: .opacity.combined(
+                with: .scale(scale: 0.985, anchor: .top)
+            )
+        )
+    }
+
     private var contentRevealAnimation: Animation {
         contentRevealAnimation(expanded: panelState.isExpanded)
     }
@@ -1001,6 +1036,53 @@ struct NotchView: View {
             .frame(width: width, height: height, alignment: .topLeading)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
+    }
+
+    /// Red calibration overlay shown while the notch size is being tuned.
+    /// It reflects the pending values only; the panel itself keeps the
+    /// committed geometry until the user confirms.
+    private func notchPreview(
+        width: CGFloat,
+        topCornerRadius: CGFloat,
+        bottomCornerRadius: CGFloat
+    ) -> some View {
+        let widthDelta = CGFloat(notchPreviewWidth - notchWidthAdjustment)
+        let heightDelta = CGFloat(notchPreviewHeight - notchHeightAdjustment)
+        let bodyWidth = max(panelState.notchWidth + widthDelta, 8)
+        let rectHeight = max(panelState.topInset + heightDelta, 8)
+        let shapeWidth = bodyWidth + topCornerRadius * 2
+        let rectX = (width - shapeWidth) / 2
+        let shape = NotchShape(
+            topCornerRadius: topCornerRadius,
+            bottomCornerRadius: bottomCornerRadius
+        )
+
+        return ZStack {
+            shape
+                .fill(Color.red.opacity(0.18))
+
+            shape
+                .stroke(
+                    Color.red.opacity(0.92),
+                    style: StrokeStyle(
+                        lineWidth: 1.5,
+                        dash: [4, 3]
+                    )
+                )
+
+            Text(
+                "\(Int(bodyWidth.rounded())) × \(Int(rectHeight.rounded()))"
+            )
+            .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 1.5)
+            .background(Color.red.opacity(0.85), in: Capsule())
+        }
+        .frame(width: shapeWidth, height: rectHeight)
+        .offset(x: rectX)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private func compactContent(
@@ -2287,10 +2369,8 @@ struct NotchView: View {
                         .padding(.top, 2)
                 }
             }
-
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 
     private var stateTitle: String {

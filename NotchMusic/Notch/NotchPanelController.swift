@@ -23,6 +23,8 @@ final class NotchPanelController {
     private var screenUnlockTask: Task<Void, Never>?
     private var pointerTrackingTask: Task<Void, Never>?
     private var isPointerInsideInteractiveRegion = false
+    private var appliedNotchWidthAdjustment: Int?
+    private var appliedNotchHeightAdjustment: Int?
     private var cancellables: Set<AnyCancellable> = []
 
     init(
@@ -93,6 +95,16 @@ final class NotchPanelController {
             }
             .store(in: &cancellables)
 
+        NotificationCenter.default.publisher(
+            for: UserDefaults.didChangeNotification
+        )
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+            Task { @MainActor in
+                self?.notchAdjustmentDidChange()
+            }
+        }
+        .store(in: &cancellables)
     }
 
     func show() {
@@ -110,6 +122,13 @@ final class NotchPanelController {
     }
 
     private func refreshScreen() {
+        appliedNotchWidthAdjustment = UserDefaults.standard.integer(
+            forKey: NotchLayout.notchWidthAdjustment
+        )
+        appliedNotchHeightAdjustment = UserDefaults.standard.integer(
+            forKey: NotchLayout.notchHeightAdjustment
+        )
+
         guard let screen = NotchGeometry.activeScreen(),
               let metrics = NotchGeometry.metrics(for: screen) else {
             self.metrics = nil
@@ -135,6 +154,21 @@ final class NotchPanelController {
             isPointerInsideInteractiveRegion = false
             updatePointerPassthrough()
         }
+    }
+
+    private func notchAdjustmentDidChange() {
+        let widthAdjustment = UserDefaults.standard.integer(
+            forKey: NotchLayout.notchWidthAdjustment
+        )
+        let heightAdjustment = UserDefaults.standard.integer(
+            forKey: NotchLayout.notchHeightAdjustment
+        )
+        guard widthAdjustment != appliedNotchWidthAdjustment
+                || heightAdjustment != appliedNotchHeightAdjustment
+        else {
+            return
+        }
+        refreshScreen()
     }
 
     private func screenLockStateDidChange(_ isLocked: Bool) {
