@@ -7,6 +7,24 @@
         <language>zh-cn</language>
         <items>
         <item>
+            <title>Version 0.4.2</title>
+            <description><![CDATA[NotchMusic 0.4.2
+
+- 修复安装后无法启动的问题（Sparkle 框架无法加载）
+- 安装窗口保持新版蓝色渐变布局]]></description>
+            <pubDate>Tue, 17 Nov 2026 02:42:20 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.4.2/NotchMusic-0.4.2.dmg"
+                sparkle:version="6"
+                sparkle:shortVersionString="0.4.2"
+                sparkle:edSignature="laOV7vvnxYB16kGhEFyElMP/8Gt0V+yM8LSGjpNksFW4IjL0Fwb97f07LM3pbpqMPWjBOQqzjB1X0ug1LdsECw=="
+                length="16237013"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        </item>
+
+        <item>
             <title>Version 0.4.1</title>
             <description><![CDATA[NotchMusic 0.4.1
 
