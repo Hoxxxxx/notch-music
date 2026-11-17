@@ -7,6 +7,24 @@
         <language>zh-cn</language>
         <items>
         <item>
+            <title>Version 0.4.1</title>
+            <description><![CDATA[NotchMusic 0.4.1
+
+- 安装窗口改为图标同款蓝色渐变，新增拖拽箭头和 Applications 快捷方式
+- 优化底部安装提示与图标布局]]></description>
+            <pubDate>Tue, 17 Nov 2026 02:35:06 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.4.1/NotchMusic-0.4.1.dmg"
+                sparkle:version="5"
+                sparkle:shortVersionString="0.4.1"
+                sparkle:edSignature="kVRaC6CtMZpEyWSrOAkEclmGTAEvRlwKGbKcar9Z88yNCbgn13UKuTdU+41KY2ofjUauI/V/GM67qFubwo2wAg=="
+                length="16237021"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        </item>
+
+        <item>
             <title>Version 0.4.0</title>
             <description><![CDATA[NotchMusic 0.4.0
 
