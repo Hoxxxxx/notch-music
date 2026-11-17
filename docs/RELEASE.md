@@ -28,3 +28,4 @@
 - 建议换一个永久位置存放 Sparkle 工具（如 `~/tools/sparkle`），并通过 `SPARKLE_BIN_DIR` 指向
 - 更新以 `CURRENT_PROJECT_VERSION`（build 号）作为版本比较依据，脚本会自动递增
 - appcast.xml 必须在 main 分支上保持最新（Sparkle 通过 raw.githubusercontent 拉取）
+- DMG 的窗口布局由 `scripts/create-dmg.sh` 通过 Finder 写入，必须在本机已登录桌面时运行；SSH 或 CI 环境下布局不会生效

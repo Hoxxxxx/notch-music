@@ -69,11 +69,7 @@ APP_PATH="$BUILD_DIR/NotchMusic.app"
 # ---------- 3. 打包 DMG ----------
 echo "==> 打包 DMG..."
 mkdir -p "$DMG_DIR"
-rm -f "$DMG_PATH"
-hdiutil create -volname "NotchMusic $VERSION" \
-    -srcfolder "$APP_PATH" \
-    -ov -format UDZO \
-    "$DMG_PATH" >/dev/null
+"$ROOT/scripts/create-dmg.sh" "$APP_PATH" "$VERSION" "$DMG_PATH"
 
 # ---------- 4. Sparkle 签名 ----------
 echo "==> 生成 EdDSA 签名..."
