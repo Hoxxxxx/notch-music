@@ -37,11 +37,13 @@ private enum CalendarAccessState: Equatable {
 
 @MainActor
 private final class CalendarMonitor: ObservableObject {
+    static let shared = CalendarMonitor()
+
     @Published private(set) var events: [CalendarEventItem] = []
     @Published private(set) var accessState: CalendarAccessState = .loading
+    @Published var selectedDate = Date()
 
     private let store = EKEventStore()
-    private var selectedDate = Date()
     private var storeObserver: NSObjectProtocol?
     private let fetchQueue = DispatchQueue(
         label: "NotchMusic.calendarFetch",
@@ -68,6 +70,9 @@ private final class CalendarMonitor: ObservableObject {
     }
 
     func load(for date: Date, requestsAccess: Bool = false) async {
+        if !Calendar.current.isDate(date, inSameDayAs: selectedDate) {
+            events = []
+        }
         selectedDate = date
         let status = EKEventStore.authorizationStatus(for: .event)
 
@@ -179,13 +184,33 @@ private final class CalendarMonitor: ObservableObject {
     }
 }
 
+@MainActor
+enum CalendarPrefetch {
+    static func start() {
+        Task {
+            await CalendarMonitor.shared.load(for: Date())
+        }
+    }
+}
+
 struct CalendarIslandView: View {
     let accent: Color
+    let width: CGFloat
 
-    @StateObject private var monitor = CalendarMonitor()
-    @State private var selectedDate = Date()
+    @ObservedObject private var monitor = CalendarMonitor.shared
     @State private var eventLoadTask: Task<Void, Never>?
     @Environment(\.openURL) private var openURL
+
+    private var selectedDate: Date {
+        monitor.selectedDate
+    }
+
+    private var selectedDateBinding: Binding<Date> {
+        Binding(
+            get: { monitor.selectedDate },
+            set: { monitor.selectedDate = $0 }
+        )
+    }
 
     private static let yearFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -201,40 +226,21 @@ struct CalendarIslandView: View {
         return formatter
     }()
 
-    private static let selectedDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "M月d日 EEE"
-        return formatter
-    }()
-
-    private static let monthDayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "M月d日"
-        return formatter
-    }()
-
     private let calendar = Calendar.current
 
     var body: some View {
-        GeometryReader { geometry in
-            let monthWidth = min(
-                max(geometry.size.width * 0.45, 186),
-                218
-            )
+        let monthWidth = min(max(width * 0.45, 186), 218)
 
-            HStack(spacing: 11) {
-                dateWheelPane
-                    .frame(width: monthWidth)
+        HStack(spacing: 11) {
+            dateWheelPane
+                .frame(width: monthWidth)
 
-                Rectangle()
-                    .fill(Color.white.opacity(0.08))
-                    .frame(width: 0.5)
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(width: 0.5)
 
-                eventPane
-                    .frame(maxWidth: .infinity)
-            }
+            eventPane
+                .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
@@ -274,7 +280,7 @@ struct CalendarIslandView: View {
                 .contentTransition(.numericText())
                 .animation(
                     .easeInOut(duration: 0.16),
-                    value: selectedDate
+                    value: calendar.component(.year, from: selectedDate)
                 )
 
             Spacer(minLength: 0)
@@ -285,16 +291,17 @@ struct CalendarIslandView: View {
                 .contentTransition(.numericText())
                 .animation(
                     .easeInOut(duration: 0.16),
-                    value: selectedDate
+                    value: calendar.component(.month, from: selectedDate)
                 )
 
             Spacer(minLength: 0)
 
             CalendarDateWheel(
-                selectedDate: $selectedDate,
+                selectedDate: selectedDateBinding,
                 accent: accent
             )
-            .frame(height: 44)
+            .frame(height: 58)
+            .padding(.vertical, -7)
             .padding(.top, 12)
 
             Spacer(minLength: 0)
@@ -303,38 +310,16 @@ struct CalendarIslandView: View {
     }
 
     private var eventPane: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
-                Text(selectedDateTitle)
-                    .font(
-                        .system(
-                            size: 10.5,
-                            weight: .semibold,
-                            design: .rounded
-                        )
-                    )
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-
-                Spacer(minLength: 2)
-
-                if monitor.accessState == .granted,
-                   !monitor.events.isEmpty {
-                    Text("\(monitor.events.count) 项")
-                        .font(.system(size: 8, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.35))
-                }
-            }
-            .frame(height: 17)
-
-            Rectangle()
-                .fill(Color.white.opacity(0.07))
-                .frame(height: 0.5)
-
-            eventContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(maxHeight: .infinity, alignment: .top)
+        eventContent
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .animation(
+                .easeOut(duration: 0.18),
+                value: monitor.accessState
+            )
+            .animation(
+                .easeOut(duration: 0.18),
+                value: monitor.events.count
+            )
     }
 
     @ViewBuilder
@@ -452,17 +437,6 @@ struct CalendarIslandView: View {
         .help(event.location ?? event.title)
     }
 
-    private var selectedDateTitle: String {
-        if calendar.isDateInToday(selectedDate) {
-            return "今天 · " + Self.monthDayFormatter.string(
-                from: selectedDate
-            )
-        }
-        return Self.selectedDateFormatter.string(
-            from: selectedDate
-        )
-    }
-
     private func openCalendarPrivacySettings() {
         guard let url = URL(
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars"
@@ -477,215 +451,281 @@ private struct CalendarDateWheel: View {
     @Binding var selectedDate: Date
     let accent: Color
 
-    private static let accessibilityDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
-        formatter.dateFormat = "yyyy年M月d日"
-        return formatter
-    }()
-
-    @State private var scrollPosition: Int?
-    @State private var hasAppeared = false
-
-    private let calendar = Calendar.current
-    private let cellWidth: CGFloat = 42
-    private let cellHeight: CGFloat = 44
-    private let wheelHeight: CGFloat = 60
-    private let pastDays = 365
-    private let futureDays = 365
-
     var body: some View {
-        GeometryReader { geometry in
-            let sidePadding = max(
-                0,
-                (geometry.size.width - cellWidth) / 2
-            )
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 0) {
-                    ForEach(0..<dateCount, id: \.self) { index in
-                        dateButton(
-                            date: dateForItemIndex(index),
-                            index: index
-                        )
-                        .visualEffect { content, proxy in
-                            let frame = proxy.frame(
-                                in: .named("calendarDateWheel")
-                            )
-                            let distance = abs(
-                                frame.midX - geometry.size.width / 2
-                            )
-                            let focus = dateFocus(for: distance)
-                            return content
-                                .scaleEffect(0.7 + focus * 0.7)
-                                .opacity(0.5 + focus * 0.5)
-                        }
-                        .id(index)
-                    }
-                }
-                .frame(height: wheelHeight)
-                .scrollTargetLayout()
-            }
-            .scrollIndicators(.never)
-            .contentMargins(
-                .horizontal,
-                sidePadding,
-                for: .scrollContent
-            )
-            .coordinateSpace(name: "calendarDateWheel")
-            .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $scrollPosition, anchor: .center)
-            .frame(height: wheelHeight)
-            .offset(y: (cellHeight - wheelHeight) / 2)
-            .simultaneousGesture(
-                SpatialTapGesture(coordinateSpace: .local)
-                    .onEnded { value in
-                        selectDate(
-                            at: value.location.x,
-                            width: geometry.size.width
-                        )
-                    }
-            )
-            .onAppear {
-                DispatchQueue.main.async {
-                    scrollPosition = indexForDate(selectedDate)
-                    hasAppeared = true
-                }
-            }
-            .onChange(of: scrollPosition) { _, newValue in
-                guard hasAppeared,
-                      let newValue,
-                      (0..<dateCount).contains(newValue) else {
-                    return
-                }
-                let date = dateForItemIndex(newValue)
-                guard !calendar.isDate(date, inSameDayAs: selectedDate)
-                else {
-                    return
-                }
-                selectedDate = date
-                performHaptic()
-            }
-            .onChange(of: selectedDate) { _, newDate in
-                guard hasAppeared else { return }
-                let target = indexForDate(newDate)
-                if scrollPosition != target {
-                    scrollPosition = target
-                }
-            }
-        }
+        CalendarDateStrip(
+            selectedDate: $selectedDate,
+            accent: NSColor(accent)
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
 
-    private func dateFocus(for distance: CGFloat) -> CGFloat {
-        max(0, 1 - distance / 88)
+private struct CalendarDateStrip: NSViewRepresentable {
+    @Binding var selectedDate: Date
+    let accent: NSColor
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
     }
 
-    private func selectDate(at x: CGFloat, width: CGFloat) {
-        let centerIndex = scrollPosition ?? indexForDate(selectedDate)
-        let offset = Int(round((x - width / 2) / cellWidth))
-        let target = centerIndex + offset
-        guard (0..<dateCount).contains(target) else { return }
-
-        let date = dateForItemIndex(target)
-        withAnimation(.easeOut(duration: 0.16)) {
-            selectedDate = date
-            scrollPosition = target
+    func makeNSView(context: Context) -> CalendarDateScrollView {
+        let view = CalendarDateScrollView()
+        let coordinator = context.coordinator
+        view.onDateChange = { date in
+            coordinator.centerDateChanged(date)
         }
+        view.accent = accent
+        view.setSelectedDate(selectedDate, animated: false)
+        return view
+    }
+
+    func updateNSView(
+        _ nsView: CalendarDateScrollView,
+        context: Context
+    ) {
+        context.coordinator.parent = self
+        nsView.accent = accent
+        nsView.setSelectedDate(selectedDate, animated: true)
+    }
+
+    final class Coordinator {
+        var parent: CalendarDateStrip
+
+        init(_ parent: CalendarDateStrip) {
+            self.parent = parent
+        }
+
+        func centerDateChanged(_ date: Date) {
+            guard !Calendar.current.isDate(
+                date,
+                inSameDayAs: parent.selectedDate
+            ) else {
+                return
+            }
+            parent.selectedDate = date
+        }
+    }
+}
+
+private final class CalendarDateScrollView: NSScrollView {
+    var onDateChange: ((Date) -> Void)?
+    var accent: NSColor = .systemBlue {
+        didSet {
+            document.accent = accent
+            document.needsDisplay = true
+        }
+    }
+
+    private let document = CalendarDateDocumentView()
+    private let cellWidth: CGFloat = 42
+    private var hasPositioned = false
+    private var isSnapping = false
+    private var isLiveScrolling = false
+    private var hapticPending = false
+    private var idleWorkItem: DispatchWorkItem?
+    private var boundsObserver: NSObjectProtocol?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        drawsBackground = false
+        hasHorizontalScroller = false
+        hasVerticalScroller = false
+        horizontalScrollElasticity = .allowed
+        verticalScrollElasticity = .none
+        autohidesScrollers = true
+        documentView = document
+        document.accent = accent
+
+        contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(liveScrollWillStart),
+            name: NSScrollView.willStartLiveScrollNotification,
+            object: self
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(liveScrollDidEnd),
+            name: NSScrollView.didEndLiveScrollNotification,
+            object: self
+        )
+        boundsObserver = NotificationCenter.default.addObserver(
+            forName: NSView.boundsDidChangeNotification,
+            object: contentView,
+            queue: .main
+        ) { [weak self] _ in
+            self?.boundsDidChange()
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        if let boundsObserver {
+            NotificationCenter.default.removeObserver(boundsObserver)
+        }
+        idleWorkItem?.cancel()
+    }
+
+    override func layout() {
+        super.layout()
+
+        let inset = max(0, (contentView.bounds.width - cellWidth) / 2)
+        let size = NSSize(
+            width: inset * 2 + CGFloat(document.dayCount) * cellWidth,
+            height: contentView.bounds.height
+        )
+        guard size.width > 0, size.height > 0 else { return }
+
+        if document.frame.size != size || document.inset != inset {
+            document.inset = inset
+            document.frame = NSRect(origin: .zero, size: size)
+        }
+
+        if !hasPositioned {
+            hasPositioned = true
+        }
+        if !isLiveScrolling && !isSnapping {
+            idleWorkItem?.cancel()
+            idleWorkItem = nil
+            scroll(to: document.highlightIndex, animated: false)
+        }
+        document.viewportCenterX = contentView.bounds.midX
+        document.needsDisplay = true
+    }
+
+    func setSelectedDate(_ date: Date, animated: Bool) {
+        guard hasPositioned else {
+            document.highlightIndex = document.index(for: date)
+            document.needsDisplay = true
+            return
+        }
+
+        let index = document.index(for: date)
+        guard index != document.highlightIndex else { return }
+
+        document.highlightIndex = index
+        document.needsDisplay = true
+        scroll(to: index, animated: animated)
+    }
+
+    func select(index: Int) {
+        guard hasPositioned, (0..<document.dayCount).contains(index)
+        else { return }
+
+        document.highlightIndex = index
+        document.needsDisplay = true
+        hapticPending = false
+        onDateChange?(document.date(for: index))
         performHaptic()
+        scroll(to: index, animated: true)
     }
 
-    private func dateButton(date: Date, index: Int) -> some View {
-        let isSelected = calendar.isDate(date, inSameDayAs: selectedDate)
-        let isToday = calendar.isDateInToday(date)
+    @objc private func liveScrollWillStart() {
+        isLiveScrolling = true
+    }
 
-        return Button {
-            withAnimation(.easeOut(duration: 0.16)) {
-                selectedDate = date
-                scrollPosition = index
-            }
-            performHaptic()
-        } label: {
-            VStack(spacing: 3) {
-                Text(weekdaySymbol(for: date))
-                    .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(
-                        isSelected
-                            ? accent.opacity(0.82)
-                            : Color.white.opacity(0.34)
-                    )
+    @objc private func liveScrollDidEnd() {
+        isLiveScrolling = false
+    }
 
-                ZStack {
-                    if isToday && !isSelected {
-                        Circle()
-                            .stroke(accent.opacity(0.7), lineWidth: 0.8)
-                            .frame(width: 26, height: 26)
-                    }
+    private func boundsDidChange() {
+        guard hasPositioned else { return }
 
-                    Text("\(calendar.component(.day, from: date))")
-                        .font(
-                            .system(
-                                size: 14,
-                                weight: isSelected ? .semibold : .medium,
-                                design: .rounded
-                            )
-                        )
-                        .foregroundStyle(
-                            isSelected
-                                ? accent
-                                : isToday
-                                    ? accent
-                                    : Color.white.opacity(0.72)
-                        )
-                }
-                .frame(width: 28, height: 28)
-            }
-            .frame(width: cellWidth, height: cellHeight)
-            .contentShape(Rectangle())
+        document.viewportCenterX = contentView.bounds.midX
+        document.needsDisplay = true
+        scheduleIdleSnap()
+
+        let index = centerIndex()
+        guard index != document.highlightIndex else { return }
+
+        document.highlightIndex = index
+        hapticPending = true
+        onDateChange?(document.date(for: index))
+    }
+
+    private func scheduleIdleSnap() {
+        idleWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.idleWorkItem = nil
+            self?.snapToNearestDay()
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel(
-            Self.accessibilityDateFormatter.string(from: date)
+        idleWorkItem = workItem
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + 0.12,
+            execute: workItem
         )
     }
 
-    private var dateCount: Int {
-        pastDays + futureDays + 1
+    private func snapToNearestDay() {
+        guard hasPositioned, !isSnapping else { return }
+
+        let index = centerIndex()
+        let target = CGFloat(index) * cellWidth
+        let origin = contentView.bounds.origin
+        guard abs(origin.x - target) > 0.5 else {
+            if hapticPending {
+                hapticPending = false
+                performHaptic()
+            }
+            return
+        }
+
+        isSnapping = true
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.timingFunction = CAMediaTimingFunction(
+                name: .easeOut
+            )
+            contentView.animator().setBoundsOrigin(
+                NSPoint(x: target, y: origin.y)
+            )
+        } completionHandler: { [weak self] in
+            guard let self else { return }
+            self.contentView.setBoundsOrigin(
+                NSPoint(x: target, y: origin.y)
+            )
+            self.isSnapping = false
+            if self.hapticPending {
+                self.hapticPending = false
+                self.performHaptic()
+            }
+        }
     }
 
-    private var baseDate: Date {
-        let today = calendar.startOfDay(for: Date())
-        return calendar.date(
-            byAdding: .day,
-            value: -pastDays,
-            to: today
-        ) ?? today
+    private func scroll(to index: Int, animated: Bool) {
+        let target = NSPoint(
+            x: CGFloat(index) * cellWidth,
+            y: contentView.bounds.origin.y
+        )
+        guard animated else {
+            contentView.setBoundsOrigin(target)
+            return
+        }
+
+        isSnapping = true
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.timingFunction = CAMediaTimingFunction(
+                name: .easeOut
+            )
+            contentView.animator().setBoundsOrigin(target)
+        } completionHandler: { [weak self] in
+            guard let self else { return }
+            self.contentView.setBoundsOrigin(target)
+            self.isSnapping = false
+        }
     }
 
-    private func dateForItemIndex(_ index: Int) -> Date {
-        calendar.date(
-            byAdding: .day,
-            value: index,
-            to: baseDate
-        ) ?? baseDate
-    }
-
-    private func indexForDate(_ date: Date) -> Int {
-        let target = calendar.startOfDay(for: date)
-        let days = calendar.dateComponents(
-            [.day],
-            from: baseDate,
-            to: target
-        ).day ?? 0
-        return min(max(days, 0), dateCount - 1)
-    }
-
-    private func weekdaySymbol(for date: Date) -> String {
-        let symbols = ["日", "一", "二", "三", "四", "五", "六"]
-        let weekday = calendar.component(.weekday, from: date)
-        let index = min(max(weekday - 1, 0), symbols.count - 1)
-        return symbols[index]
+    private func centerIndex() -> Int {
+        let raw = contentView.bounds.origin.x / cellWidth
+        return min(
+            max(Int(raw.rounded()), 0),
+            document.dayCount - 1
+        )
     }
 
     private func performHaptic() {
@@ -693,5 +733,204 @@ private struct CalendarDateWheel: View {
             .generic,
             performanceTime: .now
         )
+    }
+}
+
+private final class CalendarDateDocumentView: NSView {
+    let cellWidth: CGFloat = 42
+    let dayCount = 731
+
+    var inset: CGFloat = 0
+    var highlightIndex = 365
+    var viewportCenterX: CGFloat = 0
+    var accent: NSColor = .systemBlue {
+        didSet { needsDisplay = true }
+    }
+
+    private let calendar = Calendar.current
+    private let baseDate: Date
+    private let weekdaySymbols = ["日", "一", "二", "三", "四", "五", "六"]
+
+    private lazy var weekdayFont = NSFont.systemFont(
+        ofSize: 8,
+        weight: .medium
+    )
+    private lazy var dayFont = Self.roundedFont(
+        size: 14,
+        weight: .medium
+    )
+    private lazy var selectedDayFont = Self.roundedFont(
+        size: 14,
+        weight: .semibold
+    )
+
+    override var isFlipped: Bool { true }
+
+    override init(frame frameRect: NSRect) {
+        let today = Calendar.current.startOfDay(for: Date())
+        baseDate = Calendar.current.date(
+            byAdding: .day,
+            value: -365,
+            to: today
+        ) ?? today
+        super.init(frame: frameRect)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func index(for date: Date) -> Int {
+        let days = calendar.dateComponents(
+            [.day],
+            from: baseDate,
+            to: calendar.startOfDay(for: date)
+        ).day ?? 0
+        return min(max(days, 0), dayCount - 1)
+    }
+
+    func date(for index: Int) -> Date {
+        calendar.date(
+            byAdding: .day,
+            value: index,
+            to: baseDate
+        ) ?? baseDate
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard inset > 0, bounds.width > 0 else { return }
+
+        let centerX = viewportCenterX
+        let first = max(
+            0,
+            Int(((dirtyRect.minX - inset) / cellWidth).rounded(.down))
+        )
+        let last = min(
+            dayCount - 1,
+            Int(((dirtyRect.maxX - inset) / cellWidth).rounded(.up))
+        )
+        guard first <= last else { return }
+
+        for index in first...last {
+            let cellCenterX =
+                inset + CGFloat(index) * cellWidth + cellWidth / 2
+            let distance = abs(cellCenterX - centerX)
+            let focus = max(0, 1 - distance / 88)
+            drawCell(
+                index: index,
+                centerX: cellCenterX,
+                focus: focus
+            )
+        }
+    }
+
+    private func drawCell(
+        index: Int,
+        centerX: CGFloat,
+        focus: CGFloat
+    ) {
+        guard let context = NSGraphicsContext.current?.cgContext else {
+            return
+        }
+
+        let scale = 0.7 + focus * 0.7
+        let alpha = 0.5 + focus * 0.5
+        let date = date(for: index)
+        let isSelected = index == highlightIndex
+        let isToday = calendar.isDateInToday(date)
+        let middleY = bounds.height / 2
+
+        context.saveGState()
+        context.translateBy(x: centerX, y: middleY)
+        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: -centerX, y: -middleY)
+        defer { context.restoreGState() }
+
+        let weekday = weekdaySymbols[
+            min(
+                max(calendar.component(.weekday, from: date) - 1, 0),
+                weekdaySymbols.count - 1
+            )
+        ]
+        let weekdayColor: NSColor =
+            isSelected
+                ? accent.withAlphaComponent(0.82 * alpha)
+                : NSColor.white.withAlphaComponent(0.34 * alpha)
+        draw(
+            weekday,
+            font: weekdayFont,
+            color: weekdayColor,
+            center: NSPoint(x: centerX, y: middleY - 15.5)
+        )
+
+        if isToday && !isSelected {
+            let ring = NSBezierPath(
+                ovalIn: NSRect(
+                    x: centerX - 13,
+                    y: middleY + 6.25 - 13,
+                    width: 26,
+                    height: 26
+                )
+            )
+            ring.lineWidth = 0.8
+            accent.withAlphaComponent(0.7 * alpha).setStroke()
+            ring.stroke()
+        }
+
+        let dayColor: NSColor
+        if isSelected || isToday {
+            dayColor = accent.withAlphaComponent(alpha)
+        } else {
+            dayColor = NSColor.white.withAlphaComponent(0.72 * alpha)
+        }
+        draw(
+            "\(calendar.component(.day, from: date))",
+            font: isSelected ? selectedDayFont : dayFont,
+            color: dayColor,
+            center: NSPoint(x: centerX, y: middleY + 6.25)
+        )
+    }
+
+    private func draw(
+        _ text: String,
+        font: NSFont,
+        color: NSColor,
+        center: NSPoint
+    ) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: color
+        ]
+        let size = (text as NSString).size(withAttributes: attributes)
+        (text as NSString).draw(
+            at: NSPoint(
+                x: center.x - size.width / 2,
+                y: center.y - size.height / 2
+            ),
+            withAttributes: attributes
+        )
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let index = min(
+            max(Int((point.x - inset) / cellWidth), 0),
+            dayCount - 1
+        )
+
+        highlightIndex = index
+        needsDisplay = true
+        (enclosingScrollView as? CalendarDateScrollView)?
+            .select(index: index)
+    }
+
+    private static func roundedFont(
+        size: CGFloat,
+        weight: NSFont.Weight
+    ) -> NSFont {
+        let base = NSFont.systemFont(ofSize: size, weight: weight)
+        guard let descriptor = base.fontDescriptor.withDesign(.rounded)
+        else { return base }
+        return NSFont(descriptor: descriptor, size: size) ?? base
     }
 }

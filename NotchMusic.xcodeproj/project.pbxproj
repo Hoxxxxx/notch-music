@@ -36,6 +36,16 @@
 		A1000000000000000000006E /* AirPods.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006F /* AirPods.usdz */; };
 		A10000000000000000000070 /* AirPodsMax.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000071 /* AirPodsMax.usdz */; };
 		A10000000000000000000072 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000073 /* Sparkle */; };
+		A10000000000000000000077 /* AlbumArtworkLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000076 /* AlbumArtworkLibrary.swift */; };
+		A10000000000000000000086 /* NotchMusicProgressViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000078 /* NotchMusicProgressViews.swift */; };
+		A10000000000000000000087 /* NotchMusicBackgrounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000079 /* NotchMusicBackgrounds.swift */; };
+		A10000000000000000000088 /* NotchMusicCompactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007A /* NotchMusicCompactViews.swift */; };
+		A10000000000000000000089 /* NotchMusicInteractions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007B /* NotchMusicInteractions.swift */; };
+		A1000000000000000000008A /* SettingsViewComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007C /* SettingsViewComponents.swift */; };
+		A1000000000000000000008B /* SettingsViewCropEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007D /* SettingsViewCropEditor.swift */; };
+		A1000000000000000000008C /* SettingsViewStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007E /* SettingsViewStyles.swift */; };
+		A1000000000000000000008D /* MouseScrollController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007F /* MouseScrollController.swift */; };
+		A1000000000000000000008E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000080 /* OnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -69,6 +79,16 @@
 		A1000000000000000000006D /* AirPodsPro.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPodsPro.usdz; sourceTree = "<group>"; };
 		A1000000000000000000006F /* AirPods.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPods.usdz; sourceTree = "<group>"; };
 		A10000000000000000000071 /* AirPodsMax.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPodsMax.usdz; sourceTree = "<group>"; };
+		A10000000000000000000076 /* AlbumArtworkLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArtworkLibrary.swift; sourceTree = "<group>"; };
+		A10000000000000000000078 /* NotchMusicProgressViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMusicProgressViews.swift; sourceTree = "<group>"; };
+		A10000000000000000000079 /* NotchMusicBackgrounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMusicBackgrounds.swift; sourceTree = "<group>"; };
+		A1000000000000000000007A /* NotchMusicCompactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMusicCompactViews.swift; sourceTree = "<group>"; };
+		A1000000000000000000007B /* NotchMusicInteractions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMusicInteractions.swift; sourceTree = "<group>"; };
+		A1000000000000000000007C /* SettingsViewComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewComponents.swift; sourceTree = "<group>"; };
+		A1000000000000000000007D /* SettingsViewCropEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewCropEditor.swift; sourceTree = "<group>"; };
+		A1000000000000000000007E /* SettingsViewStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewStyles.swift; sourceTree = "<group>"; };
+		A1000000000000000000007F /* MouseScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseScrollController.swift; sourceTree = "<group>"; };
+		A10000000000000000000080 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -119,6 +139,7 @@
 			children = (
 				A10000000000000000000020 /* NotchMusicApp.swift */,
 				A10000000000000000000021 /* AppDelegate.swift */,
+				A10000000000000000000080 /* OnboardingView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -136,6 +157,10 @@
 				A10000000000000000000030 /* SystemHUDView.swift */,
 				A10000000000000000000067 /* CalendarIslandView.swift */,
 				A1000000000000000000006B /* AirPodsPro3DView.swift */,
+				A10000000000000000000078 /* NotchMusicProgressViews.swift */,
+				A10000000000000000000079 /* NotchMusicBackgrounds.swift */,
+				A1000000000000000000007A /* NotchMusicCompactViews.swift */,
+				A1000000000000000000007B /* NotchMusicInteractions.swift */,
 			);
 			path = Notch;
 			sourceTree = "<group>";
@@ -147,6 +172,7 @@
 				A10000000000000000000027 /* AppleMusicClient.swift */,
 				A10000000000000000000028 /* MusicMonitor.swift */,
 				A1000000000000000000002C /* AudioSpectrumMonitor.swift */,
+				A10000000000000000000076 /* AlbumArtworkLibrary.swift */,
 			);
 			path = Music;
 			sourceTree = "<group>";
@@ -155,6 +181,9 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000029 /* SettingsView.swift */,
+				A1000000000000000000007C /* SettingsViewComponents.swift */,
+				A1000000000000000000007D /* SettingsViewCropEditor.swift */,
+				A1000000000000000000007E /* SettingsViewStyles.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -167,6 +196,7 @@
 				A1000000000000000000002E /* MediaKeyInterceptor.swift */,
 				A1000000000000000000002F /* SystemControlBackend.swift */,
 				A10000000000000000000069 /* DeviceConnectionMonitor.swift */,
+				A1000000000000000000007F /* MouseScrollController.swift */,
 			);
 			path = System;
 			sourceTree = "<group>";
@@ -285,6 +315,16 @@
 				A10000000000000000000066 /* CalendarIslandView.swift in Sources */,
 				A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */,
 				A1000000000000000000006A /* AirPodsPro3DView.swift in Sources */,
+				A10000000000000000000077 /* AlbumArtworkLibrary.swift in Sources */,
+				A10000000000000000000086 /* NotchMusicProgressViews.swift in Sources */,
+				A10000000000000000000087 /* NotchMusicBackgrounds.swift in Sources */,
+				A10000000000000000000088 /* NotchMusicCompactViews.swift in Sources */,
+				A10000000000000000000089 /* NotchMusicInteractions.swift in Sources */,
+				A1000000000000000000008A /* SettingsViewComponents.swift in Sources */,
+				A1000000000000000000008B /* SettingsViewCropEditor.swift in Sources */,
+				A1000000000000000000008C /* SettingsViewStyles.swift in Sources */,
+				A1000000000000000000008D /* MouseScrollController.swift in Sources */,
+				A1000000000000000000008E /* OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

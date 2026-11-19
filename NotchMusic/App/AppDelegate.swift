@@ -225,10 +225,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let audioSpectrumMonitor = AudioSpectrumMonitor()
     let systemHUDController = SystemHUDController()
     let deviceConnectionMonitor = DeviceConnectionMonitor()
+    let mouseScrollController = MouseScrollController()
 
     private var statusItem: NSStatusItem?
     private var panelController: NotchPanelController?
     private var settingsWindowController: NSWindowController?
+    private var onboardingWindowController: NSWindowController?
     private var cancellables: Set<AnyCancellable> = []
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true,
@@ -264,6 +266,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         observeScreenLockForHUD()
         systemHUDController.start()
         deviceConnectionMonitor.start()
+        mouseScrollController.start()
+        CalendarPrefetch.start()
 
         NotificationCenter.default.addObserver(
             self,
@@ -272,10 +276,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             object: nil
         )
 
-        let hasShownWelcome = UserDefaults.standard.bool(forKey: "NotchMusic.hasShownWelcome")
-        if !hasShownWelcome {
-            UserDefaults.standard.set(true, forKey: "NotchMusic.hasShownWelcome")
-            panelController?.expandTemporarily()
+        if !OnboardingSettings.isCompleted {
+            showOnboarding()
         }
     }
 
@@ -285,11 +287,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         audioSpectrumMonitor.stop()
         systemHUDController.stop()
         deviceConnectionMonitor.stop()
+        mouseScrollController.stop()
         cancellables.removeAll()
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
         systemHUDController.refreshAvailability()
+        mouseScrollController.refreshAvailability()
     }
 
     private func configureStatusItem() {
@@ -297,6 +301,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         item.button?.toolTip = "NotchMusic"
 
         let menu = NSMenu()
+        let welcomeItem = menu.addItem(
+            withTitle: "欢迎使用 NotchMusic…",
+            action: #selector(showOnboarding),
+            keyEquivalent: ""
+        )
+        welcomeItem.target = self
+
         let settingsItem = menu.addItem(
             withTitle: "设置…",
             action: #selector(showSettings),
@@ -404,6 +415,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    @objc func showOnboarding() {
+        NSApp.activate(ignoringOtherApps: true)
+
+        if onboardingWindowController == nil {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 540, height: 600),
+                styleMask: [.titled, .closable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            window.title = "欢迎使用 NotchMusic"
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            window.titlebarAppearsTransparent = true
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.contentViewController = NSHostingController(
+                rootView: OnboardingView { [weak self] in
+                    self?.finishOnboarding()
+                }
+            )
+            window.contentView?.wantsLayer = true
+            window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
+            window.center()
+            onboardingWindowController = NSWindowController(window: window)
+        }
+
+        if let window = onboardingWindowController?.window,
+           let screen = NSScreen.main,
+           !screen.visibleFrame.intersects(window.frame) {
+            window.center()
+        }
+
+        onboardingWindowController?.showWindow(nil)
+        onboardingWindowController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func finishOnboarding() {
+        OnboardingSettings.markCompleted()
+        onboardingWindowController?.close()
+        onboardingWindowController = nil
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === onboardingWindowController?.window else {
+            return
+        }
+        OnboardingSettings.markCompleted()
+        onboardingWindowController = nil
+    }
+
     private func showSettingsWindow() {
         if settingsWindowController == nil {
             let window = NSWindow(
@@ -425,6 +489,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     .environmentObject(systemActivityMonitor)
                     .environmentObject(audioSpectrumMonitor)
                     .environmentObject(systemHUDController)
+                    .environmentObject(mouseScrollController)
             )
             window.contentView?.wantsLayer = true
             window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
@@ -441,16 +506,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         settingsWindowController?.showWindow(nil)
         settingsWindowController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow,
-              window == settingsWindowController?.window else {
-            return
-        }
-        DispatchQueue.main.async { [weak self] in
-            self?.settingsWindowController = nil
-        }
     }
 
     @objc private func checkForUpdates() {

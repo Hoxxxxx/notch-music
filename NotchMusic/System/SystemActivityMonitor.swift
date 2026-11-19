@@ -62,17 +62,23 @@ final class SystemActivityMonitor: NSObject, ObservableObject {
     @Published private(set) var isMicrophoneActive = false
     @Published private(set) var isScreenLocked = false
     @Published private(set) var showsUnlockConfirmation = false
+    @Published private(set) var showsUnlockFailure = false
 
     private var monitorTask: Task<Void, Never>?
     private var distributedObservers: [NSObjectProtocol] = []
     private var workspaceObservers: [NSObjectProtocol] = []
     private var defaultsObserver: NSObjectProtocol?
     private var unlockConfirmationTask: Task<Void, Never>?
+    private var unlockFailureTask: Task<Void, Never>?
+    private var unlockAttemptLog: Process?
 
     override init() {
         super.init()
         screenRecordingDetectionSupported = ScreenWatcherProbe.isAvailable
         isScreenLocked = Self.screenIsLocked()
+        if isScreenLocked {
+            startUnlockAttemptMonitor()
+        }
         observeSystemChanges()
         observePreferenceChanges()
         startMonitoring()
@@ -83,6 +89,9 @@ final class SystemActivityMonitor: NSObject, ObservableObject {
         monitorTask = nil
         unlockConfirmationTask?.cancel()
         unlockConfirmationTask = nil
+        unlockFailureTask?.cancel()
+        unlockFailureTask = nil
+        stopUnlockAttemptMonitor()
 
         for observer in distributedObservers {
             DistributedNotificationCenter.default().removeObserver(observer)
@@ -218,17 +227,81 @@ final class SystemActivityMonitor: NSObject, ObservableObject {
         isScreenLocked = locked
         unlockConfirmationTask?.cancel()
         unlockConfirmationTask = nil
+        unlockFailureTask?.cancel()
+        unlockFailureTask = nil
+        showsUnlockFailure = false
 
         guard !locked else {
             showsUnlockConfirmation = false
+            startUnlockAttemptMonitor()
             return
         }
 
+        stopUnlockAttemptMonitor()
         showsUnlockConfirmation = true
         unlockConfirmationTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             guard !Task.isCancelled else { return }
             self?.showsUnlockConfirmation = false
+        }
+    }
+
+    private func startUnlockAttemptMonitor() {
+        guard unlockAttemptLog == nil else { return }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/log")
+        process.arguments = [
+            "stream",
+            "--style",
+            "compact",
+            "--predicate",
+            #"process == "loginwindow" AND eventMessage CONTAINS "INCORRECT password""#
+        ]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            guard !data.isEmpty,
+                  let text = String(data: data, encoding: .utf8),
+                  text.split(separator: "\n").contains(where: {
+                      $0.contains("loginwindow[")
+                          && $0.contains("INCORRECT password")
+                  }) else {
+                return
+            }
+            Task { @MainActor in
+                self?.registerUnlockFailure()
+            }
+        }
+
+        do {
+            try process.run()
+            unlockAttemptLog = process
+        } catch {
+            pipe.fileHandleForReading.readabilityHandler = nil
+        }
+    }
+
+    private func stopUnlockAttemptMonitor() {
+        guard let process = unlockAttemptLog else { return }
+        unlockAttemptLog = nil
+        if process.isRunning {
+            process.terminate()
+        }
+    }
+
+    private func registerUnlockFailure() {
+        guard isScreenLocked else { return }
+
+        showsUnlockFailure = true
+        unlockFailureTask?.cancel()
+        unlockFailureTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            self?.showsUnlockFailure = false
         }
     }
 

@@ -257,25 +257,43 @@ struct WatchFaceView: View {
     let accent: Color
     var size: CGFloat = 88
     var animatesMotion = true
+    var showsLiveTime = true
 
     @AppStorage(WatchFaceClockSettings.uses24HourKey)
     private var uses24Hour = true
 
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let time = WatchFaceTime(
-                date: context.date,
-                uses24Hour: uses24Hour
-            )
+    private static let previewDate = Calendar.autoupdatingCurrent.date(
+        from: DateComponents(
+            year: 2026,
+            month: 1,
+            day: 1,
+            hour: 10,
+            minute: 9
+        )
+    ) ?? Date(timeIntervalSinceReferenceDate: 0)
 
-            face(at: time)
-                .frame(width: 88, height: 88)
-                .scaleEffect(size / 88)
-                .frame(width: size, height: size)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("时间")
-                .accessibilityValue(time.shortTimeText)
+    var body: some View {
+        Group {
+            if showsLiveTime {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    clockFace(at: context.date)
+                }
+            } else {
+                clockFace(at: Self.previewDate)
+            }
         }
+    }
+
+    private func clockFace(at date: Date) -> some View {
+        let time = WatchFaceTime(date: date, uses24Hour: uses24Hour)
+
+        return face(at: time)
+            .frame(width: 88, height: 88)
+            .scaleEffect(size / 88)
+            .frame(width: size, height: size)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("时间")
+            .accessibilityValue(time.shortTimeText)
     }
 
     @ViewBuilder

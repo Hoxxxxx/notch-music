@@ -11,6 +11,7 @@ struct NotchMusicApp: App {
                 .environmentObject(appDelegate.systemActivityMonitor)
                 .environmentObject(appDelegate.audioSpectrumMonitor)
                 .environmentObject(appDelegate.systemHUDController)
+                .environmentObject(appDelegate.mouseScrollController)
         }
         .commands {
             CommandGroup(replacing: .appSettings) {

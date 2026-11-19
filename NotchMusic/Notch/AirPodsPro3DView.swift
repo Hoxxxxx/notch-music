@@ -112,6 +112,7 @@ struct AirPods3DView: NSViewRepresentable {
     let model: AirPodsModelKind
     var rotates = true
     var framesPerSecond = 60
+    var isActive = true
 
     func makeNSView(context: Context) -> SCNView {
         let scene = SCNScene()
@@ -146,16 +147,30 @@ struct AirPods3DView: NSViewRepresentable {
         view.backgroundColor = .clear
         view.antialiasingMode = .multisampling4X
         view.preferredFramesPerSecond = framesPerSecond
-        view.rendersContinuously = rotates
-        view.isPlaying = rotates
+        view.rendersContinuously = rotates && isActive
+        view.isPlaying = rotates && isActive
         view.allowsCameraControl = false
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
         view.layer?.isOpaque = false
+        if !isActive {
+            view.needsDisplay = true
+        }
         return view
     }
 
-    func updateNSView(_ nsView: SCNView, context: Context) {}
+    func updateNSView(_ nsView: SCNView, context: Context) {
+        let shouldRender = rotates && isActive
+        if nsView.rendersContinuously != shouldRender {
+            nsView.rendersContinuously = shouldRender
+        }
+        if nsView.isPlaying != shouldRender {
+            nsView.isPlaying = shouldRender
+        }
+        if !shouldRender {
+            nsView.needsDisplay = true
+        }
+    }
 
     private func addLighting(to scene: SCNScene) {
         let key = SCNNode()
