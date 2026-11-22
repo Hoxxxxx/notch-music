@@ -7,6 +7,41 @@
         <language>zh-cn</language>
         <items>
         <item>
+            <title>Version 0.5.0</title>
+            <description><![CDATA[NotchMusic 0.5.0
+
+新增
+- 刘海音量页面：系统音量、输出设备切换与按 App 独立调节
+- 音乐歌词面板：同步滚动、当前行高亮与上下渐隐模糊
+- 日历天气：读取日历「天气」事件，支持彩色动画图标
+- 鼠标平滑滚动与垂直/水平翻转
+- 首次启动引导页，集中获取所需权限
+
+优化
+- 设置页与刘海界面拆分，整体交互更流畅
+- 音量页布局、滑块样式与展开动画统一
+
+修复
+- 修复切换日期后天气图标不更新的问题
+- 修复刘海重新展开后日历未恢复到当天的问题
+- 修复天气事件在日程列表中重复显示的问题
+
+移除
+- 移除表盘功能及相关设置
+- 移除实时定位天气请求与位置权限]]></description>
+            <pubDate>Sun, 22 Nov 2026 14:53:01 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.5.0/NotchMusic-0.5.0.dmg"
+                sparkle:version="7"
+                sparkle:shortVersionString="0.5.0"
+                sparkle:edSignature="2IK7qYE8T9XSuX6HTOXyQHtuaqcLyBAdrX0knEtQ38SVLnBQMheK2/UazYZ/ZaGGXMZtAqPqypD0kG4dGan+DQ=="
+                length="16030152"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        </item>
+
+        <item>
             <title>Version 0.4.2</title>
             <description><![CDATA[NotchMusic 0.4.2
 
