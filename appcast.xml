@@ -5,7 +5,6 @@
         <link>https://github.com/Hoxxxxx/notch-music</link>
         <description>NotchMusic 更新日志</description>
         <language>zh-cn</language>
-        <items>
         <item>
             <title>Version 0.5.0</title>
             <description><![CDATA[NotchMusic 0.5.0
@@ -113,6 +112,5 @@
             />
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
         </item>
-        </items>
     </channel>
 </rss>
