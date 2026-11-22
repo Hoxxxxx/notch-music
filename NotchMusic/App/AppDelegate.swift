@@ -224,6 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let systemActivityMonitor = SystemActivityMonitor()
     let audioSpectrumMonitor = AudioSpectrumMonitor()
     let systemHUDController = SystemHUDController()
+    let appVolumeMixer = AppVolumeMixer()
     let deviceConnectionMonitor = DeviceConnectionMonitor()
     let mouseScrollController = MouseScrollController()
 
@@ -255,6 +256,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             systemActivityMonitor: systemActivityMonitor,
             audioSpectrumMonitor: audioSpectrumMonitor,
             systemHUDController: systemHUDController,
+            appVolumeMixer: appVolumeMixer,
             deviceConnectionMonitor: deviceConnectionMonitor,
             onOpenSettings: showSettings
         )
@@ -265,6 +267,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         observePlaybackForSpectrum()
         observeScreenLockForHUD()
         systemHUDController.start()
+        appVolumeMixer.start()
         deviceConnectionMonitor.start()
         mouseScrollController.start()
         CalendarPrefetch.start()
@@ -286,6 +289,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         systemActivityMonitor.stop()
         audioSpectrumMonitor.stop()
         systemHUDController.stop()
+        appVolumeMixer.stop()
         deviceConnectionMonitor.stop()
         mouseScrollController.stop()
         cancellables.removeAll()

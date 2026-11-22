@@ -5,7 +5,7 @@ import Darwin
 import Foundation
 import ObjectiveC.runtime
 
-struct SystemControlResult {
+struct SystemControlResult: Equatable {
     let level: Double
     let isMuted: Bool
 }
@@ -25,6 +25,22 @@ final class SystemControlBackend {
 
     var volumeOutputDeviceID: AudioDeviceID? {
         audio.outputDeviceID
+    }
+
+    var volumeOutputDeviceName: String? {
+        audio.outputDeviceName
+    }
+
+    func startVolumeObservation(_ handler: @escaping () -> Void) {
+        audio.startObservingChanges(handler)
+    }
+
+    func stopVolumeObservation() {
+        audio.stopObservingChanges()
+    }
+
+    func setVolumeLevel(_ level: Double) -> SystemControlResult? {
+        audio.setLevel(level)
     }
 
     func perform(
@@ -72,6 +88,19 @@ private final class SystemAudioControl {
     }
 
     private var emulatedMuteVolume: [AudioDeviceID: Float] = [:]
+    private let observationQueue = DispatchQueue(
+        label: "io.github.hoxxxxx.NotchMusic.audio"
+    )
+    private var defaultDeviceAddress: AudioObjectPropertyAddress?
+    private var defaultDeviceListener: AudioObjectPropertyListenerBlock?
+    private var deviceListeners: [
+        (
+            address: AudioObjectPropertyAddress,
+            block: AudioObjectPropertyListenerBlock
+        )
+    ] = []
+    private var observedDevice: AudioDeviceID?
+    private var changeHandler: (() -> Void)?
 
     var isAvailable: Bool {
         guard let device = defaultOutputDevice() else { return false }
@@ -80,6 +109,30 @@ private final class SystemAudioControl {
 
     var outputDeviceID: AudioDeviceID? {
         defaultOutputDevice()
+    }
+
+    var outputDeviceName: String? {
+        guard let device = defaultOutputDevice() else { return nil }
+
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioObjectPropertyName,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var name: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        let status = withUnsafeMutablePointer(to: &name) { pointer in
+            AudioObjectGetPropertyData(
+                device,
+                &address,
+                0,
+                nil,
+                &size,
+                pointer
+            )
+        }
+        guard status == noErr, let name else { return nil }
+        return name.takeRetainedValue() as String
     }
 
     var currentState: SystemControlResult? {
@@ -97,6 +150,133 @@ private final class SystemAudioControl {
             level: isMuted ? 0 : Double(volume),
             isMuted: isMuted
         )
+    }
+
+    func startObservingChanges(_ handler: @escaping () -> Void) {
+        guard changeHandler == nil else { return }
+        changeHandler = handler
+
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let listener: AudioObjectPropertyListenerBlock = {
+            [weak self] _, _ in
+            self?.rebindObservedDevice()
+        }
+        defaultDeviceAddress = address
+        defaultDeviceListener = listener
+        AudioObjectAddPropertyListenerBlock(
+            AudioObjectID(kAudioObjectSystemObject),
+            &address,
+            observationQueue,
+            listener
+        )
+
+        rebindObservedDevice()
+    }
+
+    func stopObservingChanges() {
+        if var address = defaultDeviceAddress,
+           let listener = defaultDeviceListener {
+            AudioObjectRemovePropertyListenerBlock(
+                AudioObjectID(kAudioObjectSystemObject),
+                &address,
+                observationQueue,
+                listener
+            )
+        }
+        defaultDeviceAddress = nil
+        defaultDeviceListener = nil
+        removeDeviceListeners()
+        observedDevice = nil
+        changeHandler = nil
+    }
+
+    private func rebindObservedDevice() {
+        guard let device = defaultOutputDevice(),
+              device != observedDevice else {
+            return
+        }
+
+        removeDeviceListeners()
+        observedDevice = device
+
+        guard let control = volumeControl(for: device) else { return }
+        switch control {
+        case .single(let selector, let element):
+            addDeviceListener(
+                device: device,
+                selector: selector,
+                element: element
+            )
+        case .channels(let elements):
+            for element in elements {
+                addDeviceListener(
+                    device: device,
+                    selector: kAudioDevicePropertyVolumeScalar,
+                    element: element
+                )
+            }
+        }
+
+        if let mute = muteAddress(device: device) {
+            addDeviceListener(
+                device: device,
+                address: mute
+            )
+        }
+
+        changeHandler?()
+    }
+
+    private func addDeviceListener(
+        device: AudioDeviceID,
+        selector: AudioObjectPropertySelector,
+        element: AudioObjectPropertyElement
+    ) {
+        addDeviceListener(
+            device: device,
+            address: AudioObjectPropertyAddress(
+                mSelector: selector,
+                mScope: kAudioDevicePropertyScopeOutput,
+                mElement: element
+            )
+        )
+    }
+
+    private func addDeviceListener(
+        device: AudioDeviceID,
+        address: AudioObjectPropertyAddress
+    ) {
+        var address = address
+        let listener: AudioObjectPropertyListenerBlock = {
+            [weak self] _, _ in
+            self?.changeHandler?()
+        }
+        let status = AudioObjectAddPropertyListenerBlock(
+            device,
+            &address,
+            observationQueue,
+            listener
+        )
+        guard status == noErr else { return }
+        deviceListeners.append((address, listener))
+    }
+
+    private func removeDeviceListeners() {
+        guard let device = observedDevice else { return }
+        for entry in deviceListeners {
+            var address = entry.address
+            AudioObjectRemovePropertyListenerBlock(
+                device,
+                &address,
+                observationQueue,
+                entry.block
+            )
+        }
+        deviceListeners.removeAll()
     }
 
     func perform(
@@ -176,6 +356,33 @@ private final class SystemAudioControl {
                 isMuted: false
             )
         }
+    }
+
+    func setLevel(_ level: Double) -> SystemControlResult? {
+        guard let device = defaultOutputDevice(),
+              let control = volumeControl(for: device) else {
+            return nil
+        }
+
+        if let muteAddress = muteAddress(device: device),
+           readMute(device: device, address: muteAddress) == true {
+            _ = writeUInt32(0, device: device, address: muteAddress)
+        }
+        emulatedMuteVolume.removeValue(forKey: device)
+
+        let target = Float(min(max(level, 0), 1))
+        guard writeVolume(target, device: device, control: control) else {
+            return nil
+        }
+
+        let confirmed = readVolume(
+            device: device,
+            control: control
+        ) ?? target
+        return SystemControlResult(
+            level: Double(confirmed),
+            isMuted: false
+        )
     }
 
     private func defaultOutputDevice() -> AudioDeviceID? {

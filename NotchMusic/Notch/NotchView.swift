@@ -40,6 +40,21 @@ enum MusicControlItem: String, CaseIterable, Identifiable {
         }
     }
 }
+
+private enum MusicControlSlot: Identifiable {
+    case item(MusicControlItem)
+    case lyrics
+
+    var id: String {
+        switch self {
+        case .item(let item):
+            return item.id
+        case .lyrics:
+            return "lyrics"
+        }
+    }
+}
+
 enum MusicControlLayoutSettings {
     static let storageKey = "NotchMusic.musicControlLayout"
     static let defaultSlots: [MusicControlItem?] = [
@@ -190,6 +205,7 @@ enum NotchBackgroundSettings {
 private enum NotchContentPage: String, CaseIterable, Identifiable {
     case music
     case calendar
+    case volume
 
     var id: String { rawValue }
 
@@ -199,6 +215,8 @@ private enum NotchContentPage: String, CaseIterable, Identifiable {
             return "音乐"
         case .calendar:
             return "日历"
+        case .volume:
+            return "音量"
         }
     }
 
@@ -208,6 +226,8 @@ private enum NotchContentPage: String, CaseIterable, Identifiable {
             return "music.note"
         case .calendar:
             return "calendar"
+        case .volume:
+            return "speaker.wave.2.fill"
         }
     }
 }
@@ -244,11 +264,14 @@ struct NotchView: View {
     @ObservedObject var systemActivityMonitor: SystemActivityMonitor
     @ObservedObject var audioSpectrumMonitor: AudioSpectrumMonitor
     @ObservedObject var systemHUDController: SystemHUDController
+    @ObservedObject var appVolumeMixer: AppVolumeMixer
     @ObservedObject var deviceConnectionMonitor: DeviceConnectionMonitor
     let onOpenSettings: () -> Void
 
+    @StateObject private var lyricsController = LyricsController()
     @State private var scrubPosition: TimeInterval?
     @State private var showsVolumeSlider = false
+    @State private var musicPane = MusicPane.player
     @State private var selectedContentPage = NotchContentPage.music
     @State private var contentPageTransitionDirection =
         ContentPageTransitionDirection.forward
@@ -270,10 +293,6 @@ struct NotchView: View {
     private var systemHUDStyleRaw = SystemHUDStyle.customOSD.rawValue
     @AppStorage(SoundHUDSettings.content)
     private var soundHUDContentRaw = SoundHUDContent.device.rawValue
-    @AppStorage(WatchFaceStyle.storageKey)
-    private var watchFaceStyleRaw = WatchFaceStyle.classic.rawValue
-    @AppStorage(WatchFaceDisplaySettings.showsInMusicKey)
-    private var showsWatchFaceInMusic = true
     @AppStorage(SystemDetectionSettings.screenRecordingIndicator)
     private var showsScreenRecordingIndicator = true
     @AppStorage(SystemDetectionSettings.focusIndicator)
@@ -306,11 +325,10 @@ struct NotchView: View {
     @State private var keepsPausedCompactPresentation = false
     @State private var playbackLingerTask: Task<Void, Never>?
 
-    private let expandedArtworkSize: CGFloat = 96
     private let compactExpandedArtworkSize: CGFloat = 118
     private let compactExpandedRowHeight: CGFloat = 22
+    private let compactExpandedWidthInset: CGFloat = 66
     private let volumeSliderPillWidth: CGFloat = 108
-    private let expandedWatchFaceSize = NotchLayout.expandedContentHeight
     private let compactOuterPadding: CGFloat = 6
 
     private enum CompactPresentation: Hashable {
@@ -319,6 +337,11 @@ struct NotchView: View {
         case device
         case activity(String)
         case playback
+    }
+
+    private enum MusicPane {
+        case player
+        case lyrics
     }
 
     private struct EmptyStatePresentation {
@@ -366,8 +389,13 @@ struct NotchView: View {
             && !showsNotchSideHUD
         let usesExpandedLayout =
             !showsNotchSideHUD && (panelState.isExpanded || showsExpandedHUD)
+        let lyricsArtworkHidden = usesExpandedLayout
+            && musicPane == .lyrics
+            && (selectedContentPage == .music
+                || outgoingContentPage == .music)
         let showsArtwork =
-            usesExpandedLayout || compactPresentation == .playback
+            (usesExpandedLayout || compactPresentation == .playback)
+                && !lyricsArtworkHidden
         let hasSystemHUD = systemHUDPresentation != nil
         let showsScreenStateIconOnly =
             !usesExpandedLayout
@@ -445,15 +473,15 @@ struct NotchView: View {
                    !hasSystemHUD,
                    !systemActivityMonitor.isScreenLocked,
                    !isPlaying,
+                   !lyricsArtworkHidden,
                    usesExpandedLayout
                     || compactPresentation == .playback
                     || compactPresentation == nil,
                    !usesExpandedLayout
                     || selectedContentPage == .music
                     || outgoingContentPage == .music {
-                    let compactGlow = !showsWatchFaceInMusic
                     let glowSize: CGFloat = panelState.isExpanded
-                        ? currentExpandedArtworkSize
+                        ? compactExpandedArtworkSize
                         : 22
                     let glowOffset = panelState.isExpanded
                         ? expandedArtworkOffset
@@ -478,16 +506,16 @@ struct NotchView: View {
                                 )
                             )
                             .scaleEffect(
-                                x: compactGlow ? 1.10 : 1.24,
-                                y: compactGlow ? 1.04 : 1.24
+                                x: 1.10,
+                                y: 1.04
                             )
                             .saturation(1.45)
                             .contrast(1.06)
                             .brightness(0.06)
-                            .blur(radius: compactGlow ? 6 : 12)
+                            .blur(radius: 6)
                             .opacity(
                                 panelState.isExpanded
-                                    ? (compactGlow ? 0.60 : 0.72)
+                                    ? 0.60
                                     : 0
                             )
                             .blendMode(.screen)
@@ -544,7 +572,7 @@ struct NotchView: View {
                         )
                     )
                 } else {
-                    ZStack {
+                    ZStack(alignment: .topLeading) {
                         if usesExpandedLayout {
                             if let presentation = systemHUDPresentation,
                                showsExpandedHUD {
@@ -558,6 +586,18 @@ struct NotchView: View {
                                 .transition(expandedContentTransition)
                             } else {
                                 expandedPageContent(width: size.width)
+                                    .frame(
+                                        width: size.width,
+                                        height: size.height,
+                                        alignment: .topLeading
+                                    )
+                                    .clipShape(
+                                        NotchShape(
+                                            topCornerRadius: topCornerRadius,
+                                            bottomCornerRadius:
+                                                bottomCornerRadius
+                                        )
+                                    )
                                     .transition(pageContentTransition)
                                     .animation(
                                         expansionAnimation,
@@ -608,10 +648,10 @@ struct NotchView: View {
                     || selectedContentPage == .music
                     || outgoingContentPage == .music {
                     let artworkSize: CGFloat = panelState.isExpanded
-                        ? currentExpandedArtworkSize
+                        ? compactExpandedArtworkSize
                         : 22
                     let artworkSwipeDistance = panelState.isExpanded
-                        ? currentExpandedArtworkSize + 12
+                        ? compactExpandedArtworkSize + 12
                         : artworkSize + 8
 
                     ZStack {
@@ -700,6 +740,7 @@ struct NotchView: View {
                 }
             }
             .frame(width: size.width, height: size.height)
+            .compositingGroup()
             .clipShape(
                 NotchShape(
                     topCornerRadius: topCornerRadius,
@@ -795,8 +836,8 @@ struct NotchView: View {
             value: panelState.isExpanded
         )
         .animation(
-            watchFaceVisibilityAnimation,
-            value: showsWatchFaceInMusic
+            expansionAnimation,
+            value: expandedPanelHeight
         )
         .animation(
             .spring(response: 0.34, dampingFraction: 0.9),
@@ -816,9 +857,23 @@ struct NotchView: View {
         )
         .onAppear {
             panelState.updateVisibleSize(size)
+            syncVolumeHUDSuppression()
+            syncLyrics()
         }
         .onChange(of: size) { _, newSize in
             panelState.updateVisibleSize(newSize)
+        }
+        .onChange(of: selectedContentPage) { _, _ in
+            syncVolumeHUDSuppression()
+        }
+        .onChange(of: panelState.isExpanded) { _, isExpanded in
+            syncVolumeHUDSuppression()
+            if isExpanded {
+                CalendarPrefetch.resetToToday()
+            }
+        }
+        .onChange(of: musicMonitor.snapshot?.trackID) { _, _ in
+            syncLyrics()
         }
         .task(id: suppressibleCompactPresentation) {
             guard let presentation = suppressibleCompactPresentation else {
@@ -877,13 +932,6 @@ struct NotchView: View {
 
     private var expansionAnimation: Animation {
         notchTransitionAnimation(opening: panelState.isExpanded)
-    }
-
-    private var watchFaceVisibilityAnimation: Animation {
-        if reduceMotion {
-            return .easeOut(duration: 0.18)
-        }
-        return .spring(response: 0.36, dampingFraction: 0.86)
     }
 
     private var systemActivityAnimation: Animation {
@@ -1616,9 +1664,20 @@ struct NotchView: View {
         _ direction: ContentPageTransitionDirection
     ) {
         guard outgoingContentPage == nil else { return }
-        let target: NotchContentPage =
-            selectedContentPage == .music ? .calendar : .music
-        switchContentPage(to: target, direction: direction)
+        let pages = NotchContentPage.allCases
+        guard let index = pages.firstIndex(of: selectedContentPage) else {
+            return
+        }
+
+        let targetIndex: Int
+        switch direction {
+        case .forward:
+            targetIndex = (index + 1) % pages.count
+        case .backward:
+            targetIndex = (index - 1 + pages.count) % pages.count
+        }
+
+        switchContentPage(to: pages[targetIndex], direction: direction)
     }
 
     private func calendarDateWheelExcludedWidth(
@@ -1773,14 +1832,29 @@ struct NotchView: View {
         )
     }
 
+    private func syncVolumeHUDSuppression() {
+        systemHUDController.setVolumeHUDSuppressed(
+            panelState.isExpanded && selectedContentPage == .volume
+        )
+    }
+
+    private func syncLyrics() {
+        guard let snapshot = musicMonitor.snapshot else {
+            lyricsController.clear()
+            return
+        }
+        lyricsController.load(for: snapshot)
+    }
+
     @ViewBuilder
     private func expandedContent(
         for page: NotchContentPage,
         width: CGFloat
     ) -> some View {
-        if page == .music {
+        switch page {
+        case .music:
             expandedMusicContent(width: width)
-        } else {
+        case .calendar:
             CalendarIslandView(
                 accent: accent,
                 width: width
@@ -1792,40 +1866,50 @@ struct NotchView: View {
                 )
                 .padding(.top, NotchLayout.expandedTopPadding)
                 .padding(.bottom, NotchLayout.expandedBottomPadding)
+        case .volume:
+            VolumeIslandView(
+                controller: systemHUDController,
+                mixer: appVolumeMixer,
+                accent: accent,
+                width: width
+                    - NotchLayout.expandedHorizontalPadding * 2
+            )
+                .overlay(alignment: .bottom) {
+                    if appVolumeMixer.apps.count
+                        > NotchLayout.volumeMaxVisibleRows {
+                        Capsule()
+                            .fill(Color.white.opacity(0.28))
+                            .frame(width: 28, height: 2)
+                            .offset(y: 2)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .padding(
+                    .horizontal,
+                    NotchLayout.expandedHorizontalPadding
+                )
+                .padding(.top, NotchLayout.expandedTopPadding)
+                .padding(.bottom, NotchLayout.volumeBottomPadding)
         }
     }
 
     private func expandedPageContent(width: CGFloat) -> some View {
         ZStack(alignment: .topLeading) {
-            if let outgoingContentPage {
-                expandedContent(
-                    for: outgoingContentPage,
-                    width: width
-                )
-                .offset(
-                    x: contentPageOffset(
-                        for: outgoingContentPage,
-                        width: width
-                    )
-                )
-                .opacity(
-                    contentPageOpacity(for: outgoingContentPage)
-                )
+            ForEach(NotchContentPage.allCases) { page in
+                if page == selectedContentPage
+                    || page == outgoingContentPage {
+                    expandedContent(for: page, width: width)
+                        .frame(
+                            height: contentPageHeight(for: page),
+                            alignment: .topLeading
+                        )
+                        .offset(
+                            x: contentPageOffset(for: page, width: width)
+                        )
+                        .opacity(contentPageOpacity(for: page))
+                        .transition(.identity)
+                }
             }
-
-            expandedContent(
-                for: selectedContentPage,
-                width: width
-            )
-            .offset(
-                x: contentPageOffset(
-                    for: selectedContentPage,
-                    width: width
-                )
-            )
-            .opacity(
-                contentPageOpacity(for: selectedContentPage)
-            )
         }
         .frame(
             maxWidth: .infinity,
@@ -1834,6 +1918,19 @@ struct NotchView: View {
         )
         .clipped()
         .allowsHitTesting(outgoingContentPage == nil)
+    }
+
+    private func contentPageHeight(
+        for page: NotchContentPage
+    ) -> CGFloat {
+        panelHeight(for: page)
+    }
+
+    private var volumePanelHeight: CGFloat {
+        NotchLayout.volumeExpandedHeight(
+            appCount: appVolumeMixer.apps.count,
+            showsPermissionHint: appVolumeMixer.tapFailed
+        )
     }
 
     private func contentPageOffset(
@@ -1874,157 +1971,86 @@ struct NotchView: View {
     }
 
     private func expandedMusicContent(width: CGFloat) -> some View {
-        let watchFaceWidth = showsWatchFaceInMusic ? expandedWatchFaceSize : 0
-        let columnSpacing = showsWatchFaceInMusic
-            ? NotchLayout.expandedColumnSpacing
-            : 0
         let musicWidth = max(
             0,
-            width
-                - NotchLayout.expandedHorizontalPadding * 2
-                - columnSpacing
-                - watchFaceWidth
+            width - NotchLayout.expandedHorizontalPadding * 2
         )
+        let fullHeightLyrics = musicPane == .lyrics
+            && musicMonitor.snapshot != nil
 
-        return HStack(
-            alignment: .top,
-            spacing: columnSpacing
-        ) {
-            Group {
-                ZStack(alignment: .topLeading) {
-                    if let snapshot = musicMonitor.snapshot {
-                        if showsWatchFaceInMusic {
-                            nowPlaying(snapshot, musicWidth: musicWidth)
-                                .transition(.opacity)
-                        } else {
-                            compactNowPlaying(
-                                snapshot,
-                                musicWidth: musicWidth
-                            )
-                            .transition(.opacity)
-                        }
+        return Group {
+            ZStack(alignment: .topLeading) {
+                if let snapshot = musicMonitor.snapshot {
+                    if musicPane == .lyrics {
+                        MusicLyricsView(
+                            snapshot: snapshot,
+                            state: lyricsController.state,
+                            width: musicWidth,
+                            height: NotchLayout.compactExpandedHeight
+                                - NotchLayout.expandedTopPadding
+                                - (fullHeightLyrics
+                                    ? 0
+                                    : NotchLayout.expandedBottomPadding),
+                            onBack: {
+                                withAnimation(
+                                    .easeInOut(duration: 0.24)
+                                ) {
+                                    musicPane = .player
+                                }
+                            },
+                            onRetry: {
+                                lyricsController.retry(for: snapshot)
+                            }
+                        )
+                        .transition(.opacity)
                     } else {
-                        emptyState
-                            .transition(.opacity)
+                        compactNowPlaying(
+                            snapshot,
+                            musicWidth: musicWidth
+                        )
+                        .transition(.opacity)
                     }
+                } else {
+                    emptyState
+                        .transition(.opacity)
                 }
             }
-            .frame(width: musicWidth)
-            .frame(maxHeight: .infinity, alignment: .topLeading)
-
-            if showsWatchFaceInMusic {
-                WatchFaceView(
-                    style: selectedWatchFace,
-                    accent: accent,
-                    size: expandedWatchFaceSize
-                )
-                .hoverParallax(size: expandedWatchFaceSize)
-                .transition(
-                    .opacity.combined(
-                        with: .scale(scale: 0.86, anchor: .trailing)
-                    )
-                )
-            }
         }
+        .frame(width: musicWidth)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, NotchLayout.expandedHorizontalPadding)
         .padding(.top, NotchLayout.expandedTopPadding)
-        .padding(.bottom, NotchLayout.expandedBottomPadding)
+        .padding(
+            .bottom,
+            fullHeightLyrics
+                ? 0
+                : NotchLayout.expandedBottomPadding
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .compositingGroup()
     }
 
-    private var selectedWatchFace: WatchFaceStyle {
-        WatchFaceStyle(rawValue: watchFaceStyleRaw) ?? .classic
-    }
-
-    private var currentExpandedArtworkSize: CGFloat {
-        showsWatchFaceInMusic
-            ? expandedArtworkSize
-            : compactExpandedArtworkSize
+    private var expandedPanelWidth: CGFloat {
+        NotchLayout.expandedWidth(
+            notchWidth: panelState.notchWidth
+        ) - compactExpandedWidthInset
     }
 
     private var expandedPanelHeight: CGFloat {
-        showsWatchFaceInMusic
-            ? NotchLayout.expandedHeight
-            : NotchLayout.compactExpandedHeight
+        panelHeight(for: selectedContentPage)
     }
 
-    private var expandedPanelWidth: CGFloat {
-        let width = NotchLayout.expandedWidth(
-            notchWidth: panelState.notchWidth
-        )
-        guard !showsWatchFaceInMusic else {
-            return width
+    private func panelHeight(
+        for page: NotchContentPage
+    ) -> CGFloat {
+        if page == .volume {
+            return volumePanelHeight
         }
-        return width - expandedWatchFaceSize / 2
+        return NotchLayout.compactExpandedHeight
     }
 
     private var selectedSystemHUDStyle: SystemHUDStyle {
         SystemHUDStyle(rawValue: systemHUDStyleRaw) ?? .customOSD
-    }
-
-    private func nowPlaying(
-        _ snapshot: MusicSnapshot,
-        musicWidth: CGFloat
-    ) -> some View {
-        let rowHeight = expandedArtworkSize / 4
-        let textColumnWidth = max(
-            0,
-            musicWidth - expandedArtworkSize - 14
-        )
-
-        return VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 14) {
-                Color.clear
-                    .frame(
-                        width: expandedArtworkSize,
-                        height: expandedArtworkSize
-                    )
-
-                VStack(alignment: .leading, spacing: 0) {
-                    OverflowMarqueeText(
-                        text: snapshot.title,
-                        font: PixelTypography.font(size: 18),
-                        color: .white,
-                        speed: 32
-                    )
-                    .frame(height: rowHeight)
-
-                    OverflowMarqueeText(
-                        text: snapshot.artist.isEmpty
-                            ? "Apple Music"
-                            : snapshot.artist,
-                        font: PixelTypography.font(size: 12),
-                        color: .white.opacity(0.72)
-                    )
-                    .frame(height: rowHeight)
-
-                    OverflowMarqueeText(
-                        text: snapshot.album.isEmpty ? " " : snapshot.album,
-                        font: PixelTypography.font(size: 12),
-                        color: .white.opacity(0.42)
-                    )
-                    .frame(height: rowHeight)
-
-                    playbackControls(
-                        snapshot,
-                        width: textColumnWidth
-                    )
-                    .frame(height: rowHeight)
-                }
-                .frame(
-                    width: textColumnWidth,
-                    height: expandedArtworkSize,
-                    alignment: .topLeading
-                )
-            }
-            .frame(height: expandedArtworkSize, alignment: .top)
-
-            Spacer(minLength: 6)
-
-            playbackProgress(snapshot)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func compactNowPlaying(
@@ -2132,28 +2158,23 @@ struct NotchView: View {
         _ snapshot: MusicSnapshot,
         width: CGFloat
     ) -> some View {
-        let layout = MusicControlLayoutSettings.decode(musicControlLayoutRaw)
-        let items = layout.compactMap { $0 }
+        let slots = musicControlSlots()
         let spacing = musicControlSpacing(
             width: width,
-            itemCount: items.count
+            itemCount: slots.count
         )
         let volumeInset = musicControlVolumeInset(
-            items: items,
+            slots: slots,
             spacing: spacing
         )
 
         return HStack(spacing: 0) {
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                musicControlContent(item, snapshot: snapshot)
+            ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
+                musicControlContent(slot, snapshot: snapshot)
                     .frame(minHeight: 28)
-                    .offset(
-                        x: index == 0
-                            ? (item == .shuffle ? -7 : -5)
-                            : 0
-                    )
+                    .offset(x: leadingOffset(for: slot, index: index))
 
-                if index < items.count - 1 {
+                if index < slots.count - 1 {
                     Spacer(minLength: 0)
                 }
             }
@@ -2180,8 +2201,60 @@ struct NotchView: View {
         .opacity(musicMonitor.isSendingCommand ? 0.55 : 1)
     }
 
+    private func musicControlSlots() -> [MusicControlSlot] {
+        var slots: [MusicControlSlot] = []
+        var insertedLyrics = false
+
+        for item in MusicControlLayoutSettings
+            .decode(musicControlLayoutRaw)
+            .compactMap({ $0 }) {
+            if item == .volume {
+                slots.append(.lyrics)
+                insertedLyrics = true
+            }
+            slots.append(.item(item))
+        }
+        if !insertedLyrics {
+            slots.append(.lyrics)
+        }
+        return slots
+    }
+
     @ViewBuilder
     private func musicControlContent(
+        _ slot: MusicControlSlot,
+        snapshot: MusicSnapshot
+    ) -> some View {
+        switch slot {
+        case .item(let item):
+            musicControlItemContent(item, snapshot: snapshot)
+        case .lyrics:
+            PlaybackButton(
+                systemName: "quote.bubble",
+                label: "显示歌词",
+                tint: bottomBackground,
+                fontSize: 11
+            ) {
+                withAnimation(.easeInOut(duration: 0.24)) {
+                    musicPane = .lyrics
+                }
+            }
+        }
+    }
+
+    private func leadingOffset(
+        for slot: MusicControlSlot,
+        index: Int
+    ) -> CGFloat {
+        guard index == 0 else { return 0 }
+        if case .item(.shuffle) = slot {
+            return -7
+        }
+        return -5
+    }
+
+    @ViewBuilder
+    private func musicControlItemContent(
         _ item: MusicControlItem,
         snapshot: MusicSnapshot
     ) -> some View {
@@ -2253,49 +2326,41 @@ struct NotchView: View {
     }
 
     private func musicControlVolumeInset(
-        items: [MusicControlItem],
+        slots: [MusicControlSlot],
         spacing: CGFloat
     ) -> CGFloat {
-        guard let index = items.firstIndex(of: .volume) else { return 0 }
-        return spacing * CGFloat(items.count - 1 - index)
+        guard let index = slots.firstIndex(where: {
+            if case .item(.volume) = $0 { return true }
+            return false
+        }) else {
+            return 0
+        }
+        return spacing * CGFloat(slots.count - 1 - index)
     }
 
     private func volumeSliderPillFrame(
         panelWidth: CGFloat
     ) -> CGRect {
-        let watchFaceWidth = showsWatchFaceInMusic ? expandedWatchFaceSize : 0
-        let columnSpacing = showsWatchFaceInMusic
-            ? NotchLayout.expandedColumnSpacing
-            : 0
         let musicWidth = max(
             0,
-            panelWidth
-                - NotchLayout.expandedHorizontalPadding * 2
-                - columnSpacing
-                - watchFaceWidth
+            panelWidth - NotchLayout.expandedHorizontalPadding * 2
         )
-        let artworkWidth = showsWatchFaceInMusic
-            ? expandedArtworkSize
-            : compactExpandedArtworkSize
-        let artworkSpacing: CGFloat = showsWatchFaceInMusic ? 14 : 16
+        let artworkWidth = compactExpandedArtworkSize
+        let artworkSpacing: CGFloat = 16
         let textColumnWidth = max(
             0,
             musicWidth - artworkWidth - artworkSpacing
         )
-        let items = MusicControlLayoutSettings
-            .decode(musicControlLayoutRaw)
-            .compactMap { $0 }
+        let slots = musicControlSlots()
         let spacing = musicControlSpacing(
             width: textColumnWidth,
-            itemCount: items.count
+            itemCount: slots.count
         )
         let volumeInset = musicControlVolumeInset(
-            items: items,
+            slots: slots,
             spacing: spacing
         )
-        let rowHeight = showsWatchFaceInMusic
-            ? expandedArtworkSize / 4
-            : compactExpandedRowHeight
+        let rowHeight = compactExpandedRowHeight
 
         return CGRect(
             x: NotchLayout.expandedHorizontalPadding

@@ -13,6 +13,7 @@ final class NotchPanelController {
     private let systemActivityMonitor: SystemActivityMonitor
     private let audioSpectrumMonitor: AudioSpectrumMonitor
     private let systemHUDController: SystemHUDController
+    private let appVolumeMixer: AppVolumeMixer
     private let deviceConnectionMonitor: DeviceConnectionMonitor
     private let onOpenSettings: () -> Void
     private let panelState = NotchPanelState()
@@ -32,6 +33,7 @@ final class NotchPanelController {
         systemActivityMonitor: SystemActivityMonitor,
         audioSpectrumMonitor: AudioSpectrumMonitor,
         systemHUDController: SystemHUDController,
+        appVolumeMixer: AppVolumeMixer,
         deviceConnectionMonitor: DeviceConnectionMonitor,
         onOpenSettings: @escaping () -> Void
     ) {
@@ -39,6 +41,7 @@ final class NotchPanelController {
         self.systemActivityMonitor = systemActivityMonitor
         self.audioSpectrumMonitor = audioSpectrumMonitor
         self.systemHUDController = systemHUDController
+        self.appVolumeMixer = appVolumeMixer
         self.deviceConnectionMonitor = deviceConnectionMonitor
         self.onOpenSettings = onOpenSettings
         self.isScreenLocked = systemActivityMonitor.isScreenLocked
@@ -77,6 +80,7 @@ final class NotchPanelController {
             systemActivityMonitor: systemActivityMonitor,
             audioSpectrumMonitor: audioSpectrumMonitor,
             systemHUDController: systemHUDController,
+            appVolumeMixer: appVolumeMixer,
             deviceConnectionMonitor: deviceConnectionMonitor,
             onOpenSettings: onOpenSettings
         )
@@ -242,7 +246,7 @@ final class NotchPanelController {
             width: NotchLayout.expandedWidth(
                 notchWidth: metrics.notchWidth
             ),
-            height: NotchLayout.expandedHeight
+            height: NotchLayout.maxExpandedHeight
         )
         let size = NotchLayout.windowSize(for: contentSize)
         let frame = NSRect(

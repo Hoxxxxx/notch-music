@@ -18,16 +18,16 @@
 		A10000000000000000000048 /* MusicMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000028 /* MusicMonitor.swift */; };
 		A10000000000000000000049 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000029 /* SettingsView.swift */; };
 		A1000000000000000000004A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* Assets.xcassets */; };
-		A1000000000000000000004B /* WatchFaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002A /* WatchFaceView.swift */; };
 		A1000000000000000000004C /* SystemActivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002B /* SystemActivityMonitor.swift */; };
 		A1000000000000000000004E /* AudioSpectrumMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002C /* AudioSpectrumMonitor.swift */; };
 		A1000000000000000000004F /* SystemHUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002D /* SystemHUDController.swift */; };
 		A10000000000000000000050 /* MediaKeyInterceptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002E /* MediaKeyInterceptor.swift */; };
 		A10000000000000000000051 /* SystemControlBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002F /* SystemControlBackend.swift */; };
 		A10000000000000000000052 /* SystemHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* SystemHUDView.swift */; };
-		A10000000000000000000053 /* MultiAvatarRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000058 /* MultiAvatarRenderer.swift */; };
-		A10000000000000000000054 /* multiavatar.min.js in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000055 /* multiavatar.min.js */; };
-		A10000000000000000000056 /* Multiavatar-LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000059 /* Multiavatar-LICENSE.txt */; };
+		A1000000000000000000009B /* VolumeIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009A /* VolumeIslandView.swift */; };
+		A1000000000000000000009D /* AppVolumeMixer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009C /* AppVolumeMixer.swift */; };
+		A1000000000000000000009F /* LyricsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009E /* LyricsProvider.swift */; };
+		A100000000000000000000A1 /* MusicLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A0 /* MusicLyricsView.swift */; };
 		A10000000000000000000065 /* LockScreenIslandController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000064 /* LockScreenIslandController.swift */; };
 		A10000000000000000000066 /* CalendarIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000067 /* CalendarIslandView.swift */; };
 		A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000069 /* DeviceConnectionMonitor.swift */; };
@@ -42,7 +42,6 @@
 		A10000000000000000000088 /* NotchMusicCompactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007A /* NotchMusicCompactViews.swift */; };
 		A10000000000000000000089 /* NotchMusicInteractions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007B /* NotchMusicInteractions.swift */; };
 		A1000000000000000000008A /* SettingsViewComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007C /* SettingsViewComponents.swift */; };
-		A1000000000000000000008B /* SettingsViewCropEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007D /* SettingsViewCropEditor.swift */; };
 		A1000000000000000000008C /* SettingsViewStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007E /* SettingsViewStyles.swift */; };
 		A1000000000000000000008D /* MouseScrollController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007F /* MouseScrollController.swift */; };
 		A1000000000000000000008E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000080 /* OnboardingView.swift */; };
@@ -62,16 +61,16 @@
 		A10000000000000000000027 /* AppleMusicClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMusicClient.swift; sourceTree = "<group>"; };
 		A10000000000000000000028 /* MusicMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicMonitor.swift; sourceTree = "<group>"; };
 		A10000000000000000000029 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		A1000000000000000000002A /* WatchFaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchFaceView.swift; sourceTree = "<group>"; };
 		A1000000000000000000002B /* SystemActivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemActivityMonitor.swift; sourceTree = "<group>"; };
 		A1000000000000000000002C /* AudioSpectrumMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSpectrumMonitor.swift; sourceTree = "<group>"; };
 		A1000000000000000000002D /* SystemHUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHUDController.swift; sourceTree = "<group>"; };
 		A1000000000000000000002E /* MediaKeyInterceptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeyInterceptor.swift; sourceTree = "<group>"; };
 		A1000000000000000000002F /* SystemControlBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemControlBackend.swift; sourceTree = "<group>"; };
 		A10000000000000000000030 /* SystemHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHUDView.swift; sourceTree = "<group>"; };
-		A10000000000000000000055 /* multiavatar.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = multiavatar.min.js; sourceTree = "<group>"; };
-		A10000000000000000000058 /* MultiAvatarRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiAvatarRenderer.swift; sourceTree = "<group>"; };
-		A10000000000000000000059 /* Multiavatar-LICENSE.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Multiavatar-LICENSE.txt"; sourceTree = "<group>"; };
+		A1000000000000000000009A /* VolumeIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeIslandView.swift; sourceTree = "<group>"; };
+		A1000000000000000000009C /* AppVolumeMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVolumeMixer.swift; sourceTree = "<group>"; };
+		A1000000000000000000009E /* LyricsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsProvider.swift; sourceTree = "<group>"; };
+		A100000000000000000000A0 /* MusicLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicLyricsView.swift; sourceTree = "<group>"; };
 		A10000000000000000000064 /* LockScreenIslandController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenIslandController.swift; sourceTree = "<group>"; };
 		A10000000000000000000067 /* CalendarIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarIslandView.swift; sourceTree = "<group>"; };
 		A10000000000000000000069 /* DeviceConnectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConnectionMonitor.swift; sourceTree = "<group>"; };
@@ -85,7 +84,6 @@
 		A1000000000000000000007A /* NotchMusicCompactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMusicCompactViews.swift; sourceTree = "<group>"; };
 		A1000000000000000000007B /* NotchMusicInteractions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchMusicInteractions.swift; sourceTree = "<group>"; };
 		A1000000000000000000007C /* SettingsViewComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewComponents.swift; sourceTree = "<group>"; };
-		A1000000000000000000007D /* SettingsViewCropEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewCropEditor.swift; sourceTree = "<group>"; };
 		A1000000000000000000007E /* SettingsViewStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewStyles.swift; sourceTree = "<group>"; };
 		A1000000000000000000007F /* MouseScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseScrollController.swift; sourceTree = "<group>"; };
 		A10000000000000000000080 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -152,10 +150,10 @@
 				A10000000000000000000024 /* NotchPanelState.swift */,
 				A10000000000000000000025 /* NotchView.swift */,
 				A10000000000000000000064 /* LockScreenIslandController.swift */,
-				A1000000000000000000002A /* WatchFaceView.swift */,
-				A10000000000000000000058 /* MultiAvatarRenderer.swift */,
 				A10000000000000000000030 /* SystemHUDView.swift */,
 				A10000000000000000000067 /* CalendarIslandView.swift */,
+				A1000000000000000000009A /* VolumeIslandView.swift */,
+				A100000000000000000000A0 /* MusicLyricsView.swift */,
 				A1000000000000000000006B /* AirPodsPro3DView.swift */,
 				A10000000000000000000078 /* NotchMusicProgressViews.swift */,
 				A10000000000000000000079 /* NotchMusicBackgrounds.swift */,
@@ -171,6 +169,7 @@
 				A10000000000000000000026 /* MusicSnapshot.swift */,
 				A10000000000000000000027 /* AppleMusicClient.swift */,
 				A10000000000000000000028 /* MusicMonitor.swift */,
+				A1000000000000000000009E /* LyricsProvider.swift */,
 				A1000000000000000000002C /* AudioSpectrumMonitor.swift */,
 				A10000000000000000000076 /* AlbumArtworkLibrary.swift */,
 			);
@@ -182,7 +181,6 @@
 			children = (
 				A10000000000000000000029 /* SettingsView.swift */,
 				A1000000000000000000007C /* SettingsViewComponents.swift */,
-				A1000000000000000000007D /* SettingsViewCropEditor.swift */,
 				A1000000000000000000007E /* SettingsViewStyles.swift */,
 			);
 			path = Settings;
@@ -197,6 +195,7 @@
 				A1000000000000000000002F /* SystemControlBackend.swift */,
 				A10000000000000000000069 /* DeviceConnectionMonitor.swift */,
 				A1000000000000000000007F /* MouseScrollController.swift */,
+				A1000000000000000000009C /* AppVolumeMixer.swift */,
 			);
 			path = System;
 			sourceTree = "<group>";
@@ -204,8 +203,6 @@
 		A10000000000000000000057 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				A10000000000000000000055 /* multiavatar.min.js */,
-				A10000000000000000000059 /* Multiavatar-LICENSE.txt */,
 				A1000000000000000000006D /* AirPodsPro.usdz */,
 				A1000000000000000000006F /* AirPods.usdz */,
 				A10000000000000000000071 /* AirPodsMax.usdz */,
@@ -278,8 +275,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000000000000000000004A /* Assets.xcassets in Resources */,
-				A10000000000000000000054 /* multiavatar.min.js in Resources */,
-				A10000000000000000000056 /* Multiavatar-LICENSE.txt in Resources */,
 				A1000000000000000000006C /* AirPodsPro.usdz in Resources */,
 				A1000000000000000000006E /* AirPods.usdz in Resources */,
 				A10000000000000000000070 /* AirPodsMax.usdz in Resources */,
@@ -303,16 +298,18 @@
 				A10000000000000000000047 /* AppleMusicClient.swift in Sources */,
 				A10000000000000000000048 /* MusicMonitor.swift in Sources */,
 				A10000000000000000000049 /* SettingsView.swift in Sources */,
-				A1000000000000000000004B /* WatchFaceView.swift in Sources */,
 				A1000000000000000000004C /* SystemActivityMonitor.swift in Sources */,
 				A1000000000000000000004E /* AudioSpectrumMonitor.swift in Sources */,
 				A1000000000000000000004F /* SystemHUDController.swift in Sources */,
 				A10000000000000000000050 /* MediaKeyInterceptor.swift in Sources */,
 				A10000000000000000000051 /* SystemControlBackend.swift in Sources */,
 				A10000000000000000000052 /* SystemHUDView.swift in Sources */,
-				A10000000000000000000053 /* MultiAvatarRenderer.swift in Sources */,
 				A10000000000000000000065 /* LockScreenIslandController.swift in Sources */,
 				A10000000000000000000066 /* CalendarIslandView.swift in Sources */,
+				A1000000000000000000009B /* VolumeIslandView.swift in Sources */,
+				A1000000000000000000009D /* AppVolumeMixer.swift in Sources */,
+				A1000000000000000000009F /* LyricsProvider.swift in Sources */,
+				A100000000000000000000A1 /* MusicLyricsView.swift in Sources */,
 				A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */,
 				A1000000000000000000006A /* AirPodsPro3DView.swift in Sources */,
 				A10000000000000000000077 /* AlbumArtworkLibrary.swift in Sources */,
@@ -321,7 +318,6 @@
 				A10000000000000000000088 /* NotchMusicCompactViews.swift in Sources */,
 				A10000000000000000000089 /* NotchMusicInteractions.swift in Sources */,
 				A1000000000000000000008A /* SettingsViewComponents.swift in Sources */,
-				A1000000000000000000008B /* SettingsViewCropEditor.swift in Sources */,
 				A1000000000000000000008C /* SettingsViewStyles.swift in Sources */,
 				A1000000000000000000008D /* MouseScrollController.swift in Sources */,
 				A1000000000000000000008E /* OnboardingView.swift in Sources */,

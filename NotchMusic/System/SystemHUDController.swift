@@ -526,6 +526,7 @@ struct SoundOutputDevice {
 @MainActor
 final class SystemHUDController: ObservableObject {
     @Published private(set) var presentation: SystemHUDPresentation?
+    @Published private(set) var volumeReading: SystemControlResult?
     @Published private(set) var availability = SystemHUDAvailability(
         volume: false,
         displayBrightness: false,
@@ -545,6 +546,7 @@ final class SystemHUDController: ObservableObject {
     private var lastPassiveStates: [SystemHUDControl: PassiveState] = [:]
     private var lastVolumeOutputDeviceID: AudioDeviceID?
     private var ignorePassiveVolumeUntil: TimeInterval = 0
+    private var suppressesVolumeHUD = false
     private var isScreenLocked = false
     private var ignoresPassiveChanges = false
 
@@ -565,9 +567,15 @@ final class SystemHUDController: ObservableObject {
     func start() {
         refreshAvailability()
         applyConfiguration()
+        backend.startVolumeObservation { [weak self] in
+            Task { @MainActor in
+                self?.handleObservedVolumeChange()
+            }
+        }
     }
 
     func stop() {
+        backend.stopVolumeObservation()
         hideTask?.cancel()
         hideTask = nil
         passiveResumeTask?.cancel()
@@ -634,6 +642,42 @@ final class SystemHUDController: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
+    var volumeState: SystemControlResult? {
+        backend.currentState(.volume)
+    }
+
+    var volumeOutputDeviceName: String? {
+        backend.volumeOutputDeviceName
+    }
+
+    func setVolumeLevel(_ level: Double) {
+        guard let result = backend.setVolumeLevel(level) else { return }
+        publishVolumeReading(result)
+        ignorePassiveVolumeUntil =
+            ProcessInfo.processInfo.systemUptime + 0.8
+    }
+
+    func setVolumeHUDSuppressed(_ suppressed: Bool) {
+        suppressesVolumeHUD = suppressed
+        guard suppressed, presentation?.control == .volume else { return }
+        hideTask?.cancel()
+        hideTask = nil
+        presentation = nil
+    }
+
+    func toggleVolumeMute() {
+        guard let result = backend.perform(
+            .volume,
+            action: .mute,
+            step: 0
+        ) else {
+            return
+        }
+        publishVolumeReading(result)
+        ignorePassiveVolumeUntil =
+            ProcessInfo.processInfo.systemUptime + 0.8
+    }
+
     private func observePreferenceChanges() {
         defaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
@@ -696,12 +740,25 @@ final class SystemHUDController: ObservableObject {
             return
         }
 
-        presentation = SystemHUDPresentation(
-            control: event.control,
-            level: result.level,
-            isMuted: result.isMuted,
-            isFineAdjustment: fine
-        )
+        if event.control == .volume {
+            publishVolumeReading(result)
+        }
+
+        if event.control == .volume && suppressesVolumeHUD {
+            if presentation?.control == .volume {
+                hideTask?.cancel()
+                hideTask = nil
+                presentation = nil
+            }
+        } else {
+            presentation = SystemHUDPresentation(
+                control: event.control,
+                level: result.level,
+                isMuted: result.isMuted,
+                isFineAdjustment: fine
+            )
+            scheduleHide()
+        }
 
         if event.control == .volume,
            SystemHUDSettings.isAudioFeedbackEnabled(defaults: defaults),
@@ -718,7 +775,6 @@ final class SystemHUDController: ObservableObject {
             )
         }
 
-        scheduleHide()
     }
 
     private func scheduleHide() {
@@ -795,6 +851,9 @@ final class SystemHUDController: ObservableObject {
                 let levelChanged = abs(state.level - previous.level) >= 0.004
                 let muteChanged = state.isMuted != previous.isMuted
                 if levelChanged || muteChanged {
+                    if control == .volume {
+                        publishVolumeReading(result)
+                    }
                     if control != .volume || now >= ignorePassiveVolumeUntil {
                         latestChange = (control, result)
                     }
@@ -805,7 +864,8 @@ final class SystemHUDController: ObservableObject {
 
         guard !isScreenLocked,
               !ignoresPassiveChanges,
-              let (control, result) = latestChange else {
+              let (control, result) = latestChange,
+              !(control == .volume && suppressesVolumeHUD) else {
             return
         }
         presentation = SystemHUDPresentation(
@@ -825,5 +885,44 @@ final class SystemHUDController: ObservableObject {
                 isMuted: state.isMuted
             )
         }
+    }
+
+    private func handleObservedVolumeChange() {
+        guard let result = backend.currentState(.volume) else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        let outputDeviceID = backend.volumeOutputDeviceID
+        if outputDeviceID != lastVolumeOutputDeviceID {
+            lastVolumeOutputDeviceID = outputDeviceID
+            ignorePassiveVolumeUntil = now + 0.8
+        }
+
+        let state = PassiveState(
+            level: result.level,
+            isMuted: result.isMuted
+        )
+        let previous = lastPassiveStates[.volume]
+        lastPassiveStates[.volume] = state
+        publishVolumeReading(result)
+
+        guard state != previous,
+              !isScreenLocked,
+              !ignoresPassiveChanges,
+              now >= ignorePassiveVolumeUntil,
+              !suppressesVolumeHUD else {
+            return
+        }
+
+        presentation = SystemHUDPresentation(
+            control: .volume,
+            level: result.level,
+            isMuted: result.isMuted,
+            isFineAdjustment: false
+        )
+        scheduleHide()
+    }
+
+    private func publishVolumeReading(_ result: SystemControlResult) {
+        guard volumeReading != result else { return }
+        volumeReading = result
     }
 }

@@ -12,10 +12,24 @@ struct NotchMetrics {
 enum NotchLayout {
     static let expandedHeight: CGFloat = 186
     static let compactExpandedHeight: CGFloat = 176
+    static let volumeRowHeight: CGFloat = 48
+    static let volumeRowSpacing: CGFloat = 6
+    static let volumeMaxVisibleRows = 3
+    static let volumeHeaderHeight: CGFloat = 48
+    static let volumeDividerGap: CGFloat = 5
+    static let volumeEmptyListHeight: CGFloat = 60
+    static let volumePermissionHintHeight: CGFloat = 26
+    static let volumeMaxExpandedHeight: CGFloat = volumeExpandedHeight(
+        appCount: volumeMaxVisibleRows
+    )
+    static let maxExpandedHeight: CGFloat = max(
+        expandedHeight,
+        volumeMaxExpandedHeight
+    )
     static let expandedTopPadding: CGFloat = 42
     static let expandedBottomPadding: CGFloat = 12
+    static let volumeBottomPadding: CGFloat = 10.5
     static let expandedHorizontalPadding: CGFloat = 35
-    static let expandedColumnSpacing: CGFloat = 16
     static let expandedTopCornerRadius: CGFloat = 19
     static let physicalNotchOutline = "NotchMusic.physicalNotchOutline"
     static let alwaysExpanded = "NotchMusic.alwaysExpanded"
@@ -26,8 +40,6 @@ enum NotchLayout {
     static let notchPreviewWidth = "NotchMusic.notchPreviewWidth"
     static let notchPreviewHeight = "NotchMusic.notchPreviewHeight"
     static let notchPreviewActive = "NotchMusic.notchPreviewActive"
-    static let expandedContentHeight =
-        expandedHeight - expandedTopPadding - expandedBottomPadding
 
     private static let windowSideMargin: CGFloat = 60
     private static let windowBottomMargin: CGFloat = 60
@@ -41,6 +53,31 @@ enum NotchLayout {
 
     static func expandedWidth(notchWidth: CGFloat) -> CGFloat {
         max(500, notchWidth + 310)
+    }
+
+    static func volumeListHeight(appCount: Int) -> CGFloat {
+        guard appCount > 0 else { return volumeEmptyListHeight }
+
+        let rows = min(appCount, volumeMaxVisibleRows)
+        return CGFloat(rows) * volumeRowHeight
+            + CGFloat(rows - 1) * volumeRowSpacing
+    }
+
+    static func volumeExpandedHeight(
+        appCount: Int,
+        showsPermissionHint: Bool = false
+    ) -> CGFloat {
+        let listHeight = volumeListHeight(appCount: appCount)
+        let hintHeight = showsPermissionHint
+            ? volumeDividerGap + volumePermissionHintHeight
+            : 0
+        return expandedTopPadding
+            + volumeHeaderHeight
+            + volumeDividerGap * 2
+            + 1
+            + listHeight
+            + hintHeight
+            + volumeBottomPadding
     }
 
     static func sideHUDWidth(notchWidth: CGFloat) -> CGFloat {

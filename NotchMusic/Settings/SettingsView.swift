@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 private struct SettingsPreviewsActiveKey: EnvironmentKey {
     static let defaultValue = true
@@ -17,7 +16,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case mouse
     case hud
     case music
-    case watchFace
     case detection
     case about
 
@@ -33,8 +31,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             return "HUD"
         case .music:
             return "音乐"
-        case .watchFace:
-            return "表盘"
         case .detection:
             return "系统检测"
         case .about:
@@ -52,8 +48,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             return "slider.horizontal.3"
         case .music:
             return "music.note"
-        case .watchFace:
-            return "applewatch"
         case .detection:
             return "eye.fill"
         case .about:
@@ -71,8 +65,6 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             return Color(red: 0.66, green: 0.40, blue: 1.00)
         case .music:
             return Color(red: 1.00, green: 0.34, blue: 0.38)
-        case .watchFace:
-            return Color(red: 0.22, green: 0.78, blue: 0.48)
         case .detection:
             return Color(red: 1.00, green: 0.62, blue: 0.20)
         case .about:
@@ -139,12 +131,9 @@ struct SettingsView: View {
     @State private var selectedIconSettingsPage = IconSettingsPage.menuBar
     @State private var isPointerInsideSettings = false
     @State private var selectedMusicControlSlot: Int?
-    @State private var watchFaceCropEditor: WatchFaceCropEditorState?
-    @State private var watchFaceImageError: String?
     @State private var draftNotchWidthAdjustment = 0
     @State private var draftNotchHeightAdjustment = 0
     @State private var isNotchPreviewing = false
-    @FocusState private var isEmojiFieldFocused: Bool
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var musicMonitor: MusicMonitor
     @EnvironmentObject private var systemActivityMonitor: SystemActivityMonitor
@@ -209,20 +198,6 @@ struct SettingsView: View {
     private var notchBackgroundAlwaysVisible = false
     @AppStorage(NotchLayout.alwaysExpanded)
     private var keepsNotchExpanded = false
-    @AppStorage(WatchFaceStyle.storageKey)
-    private var watchFaceStyleRaw = WatchFaceStyle.classic.rawValue
-    @AppStorage(WatchFaceDisplaySettings.showsInMusicKey)
-    private var showsWatchFaceInMusic = true
-    @AppStorage(MultiAvatarSettings.seedKey)
-    private var avatarSeed = MultiAvatarSettings.defaultSeed
-    @AppStorage(WatchFaceEmojiSettings.storageKey)
-    private var watchFaceEmoji = WatchFaceEmojiSettings.defaultEmoji
-    @AppStorage(WatchFaceImageSettings.pathKey)
-    private var watchFaceImagePath = ""
-    @AppStorage(WatchFaceImageSettings.cropKey)
-    private var watchFaceImageCropRawValue = ""
-    @AppStorage(WatchFaceClockSettings.uses24HourKey)
-    private var uses24HourClock = true
     @AppStorage(SystemDetectionSettings.screenRecordingDetection)
     private var screenRecordingDetectionEnabled = true
     @AppStorage(SystemDetectionSettings.screenRecordingIndicator)
@@ -273,11 +248,6 @@ struct SettingsView: View {
     private var mouseScrollSpeed = 2.90
     @AppStorage(MouseScrollSettings.durationKey)
     private var mouseScrollDuration = 4.50
-
-    private let watchFaceEmojiOptions = [
-        "😀", "😎", "🥰", "😂", "🤩", "😴", "🤖", "👻",
-        "🐶", "🐱", "🐼", "🦊", "🐸", "🌈", "⚡️", "✨"
-    ]
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -336,19 +306,6 @@ struct SettingsView: View {
         ) { _ in
             systemHUDController.refreshAvailability()
             mouseScrollController.refreshAvailability()
-        }
-        .sheet(item: $watchFaceCropEditor) { editor in
-            WatchFaceCropEditor(
-                image: editor.image,
-                initialCrop: editor.initialCrop,
-                onCancel: {
-                    watchFaceCropEditor = nil
-                },
-                onConfirm: { crop in
-                    applyWatchFaceCrop(crop, editor: editor)
-                    watchFaceCropEditor = nil
-                }
-            )
         }
     }
 
@@ -428,11 +385,6 @@ struct SettingsView: View {
                         musicControlsSection
                     }
 
-                }
-
-            case .watchFace:
-                glassCard {
-                    watchFaceSection
                 }
 
             case .detection:
@@ -1752,339 +1704,6 @@ struct SettingsView: View {
         )
     }
 
-    private var watchFaceSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("表盘")
-                    .font(.system(size: 13, weight: .semibold))
-
-                Spacer()
-
-                Text(selectedWatchFace.displayName)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-
-            LazyVGrid(
-                columns: Array(
-                    repeating: GridItem(.flexible(), spacing: 8),
-                    count: 5
-                ),
-                spacing: 8
-            ) {
-                ForEach(WatchFaceStyle.allCases) { style in
-                    watchFaceButton(style)
-                }
-            }
-
-            settingToggle(
-                title: "在音乐界面显示",
-                detail: "关闭后音乐播放界面只保留播放内容",
-                systemImage: "music.note",
-                isOn: $showsWatchFaceInMusic
-            )
-
-            Divider()
-                .opacity(0.5)
-
-            HStack(spacing: 10) {
-                Label("时间制式", systemImage: "clock")
-                    .font(.system(size: 12, weight: .semibold))
-
-                Spacer()
-
-                Picker("时间制式", selection: $uses24HourClock) {
-                    Text("12 小时").tag(false)
-                    Text("24 小时").tag(true)
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .frame(width: 156)
-            }
-
-            if selectedWatchFace == .avatar {
-                Divider()
-                    .opacity(0.5)
-
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack {
-                        Label("头像 ID", systemImage: "person.crop.circle")
-                            .font(.system(size: 12, weight: .semibold))
-
-                        Spacer()
-
-                        Button {
-                            avatarSeed = "Notch-\(Int.random(in: 1000...9999))"
-                        } label: {
-                            Label("随机", systemImage: "shuffle")
-                        }
-                        .controlSize(.small)
-                    }
-
-                    TextField("输入昵称或任意文字", text: $avatarSeed)
-                        .textFieldStyle(.roundedBorder)
-
-                    Text("相同的头像 ID 会始终生成同一个头像；头像在本机离线生成。")
-                        .settingsCaption()
-                }
-            }
-
-            if selectedWatchFace == .emoji {
-                Divider()
-                    .opacity(0.5)
-
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Label("Emoji 表情", systemImage: "face.smiling")
-                            .font(.system(size: 12, weight: .semibold))
-
-                        Spacer()
-
-                        Button("系统表情") {
-                            openEmojiPalette()
-                        }
-                        .controlSize(.small)
-                    }
-
-                    TextField(
-                        "输入、粘贴或从系统表情面板选择",
-                        text: $watchFaceEmoji
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 15))
-                    .focused($isEmojiFieldFocused)
-                    .onChange(of: watchFaceEmoji) { _, value in
-                        let normalized =
-                            WatchFaceEmojiSettings.normalized(value)
-                        if value != normalized {
-                            watchFaceEmoji = normalized
-                        }
-                    }
-
-                    LazyVGrid(
-                        columns: Array(
-                            repeating: GridItem(.flexible(), spacing: 6),
-                            count: 8
-                        ),
-                        spacing: 6
-                    ) {
-                        ForEach(watchFaceEmojiOptions, id: \.self) { emoji in
-                            emojiButton(emoji)
-                        }
-                    }
-
-                    Text("可使用 macOS 系统表情面板，也可以直接输入或粘贴一个 Emoji。")
-                        .settingsCaption()
-                }
-            }
-
-            if selectedWatchFace == .customImage {
-                Divider()
-                    .opacity(0.5)
-
-                VStack(alignment: .leading, spacing: 9) {
-                    HStack {
-                        Label("自定义图片", systemImage: "photo")
-                            .font(.system(size: 12, weight: .semibold))
-
-                        Spacer()
-
-                        Button(
-                            hasCustomWatchFaceImage ? "更换图片" : "上传图片"
-                        ) {
-                            chooseCustomWatchFaceImage()
-                        }
-                        .controlSize(.small)
-                    }
-
-                    if hasCustomWatchFaceImage {
-                        HStack(spacing: 10) {
-                            if let preview = customWatchFacePreview {
-                                Image(nsImage: preview)
-                                    .resizable()
-                                    .interpolation(.high)
-                                    .scaledToFill()
-                                    .frame(width: 52, height: 52)
-                                    .clipShape(Circle())
-                                    .overlay {
-                                        Circle()
-                                            .strokeBorder(
-                                                Color.white.opacity(0.18),
-                                                lineWidth: 0.8
-                                            )
-                                    }
-                            }
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("已选择显示区域")
-                                    .font(.system(size: 11.5, weight: .medium))
-
-                                Text("可重新拖动选区或调整显示范围。")
-                                    .settingsCaption()
-                            }
-
-                            Spacer()
-
-                            Button("调整区域") {
-                                editCustomWatchFaceImage()
-                            }
-                            .controlSize(.small)
-
-                            Button {
-                                removeCustomWatchFaceImage()
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .controlSize(.small)
-                            .help("移除自定义图片")
-                            .accessibilityLabel("移除自定义图片")
-                        }
-                    } else {
-                        Text("上传后会打开区域选择，可拖动圆形选区并调整大小。")
-                            .settingsCaption()
-                    }
-
-                    if let watchFaceImageError {
-                        Text(watchFaceImageError)
-                            .font(.system(size: 10.5, weight: .medium))
-                            .foregroundStyle(Color.red.opacity(0.86))
-                    }
-
-                    Text("图片仅保存在本机，不会上传。")
-                        .settingsCaption()
-                }
-            }
-        }
-    }
-
-    private func emojiButton(_ emoji: String) -> some View {
-        let isSelected =
-            WatchFaceEmojiSettings.normalized(watchFaceEmoji) == emoji
-
-        return Button {
-            watchFaceEmoji = emoji
-        } label: {
-            Text(emoji)
-                .font(.system(size: 17))
-                .frame(maxWidth: .infinity)
-                .frame(height: 30)
-                .settingsSelectionCard(
-                    isSelected: isSelected,
-                    cornerRadius: 8,
-                    selectedFillOpacity: 0.16,
-                    unselectedFillOpacity: 0.045,
-                    selectedBorderOpacity: 0.58,
-                    selectedBorderWidth: 0.8,
-                    unselectedBorderWidth: 0.8
-                )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("表盘表情 \(emoji)")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    private func openEmojiPalette() {
-        isEmojiFieldFocused = true
-        DispatchQueue.main.async {
-            NSApp.activate(ignoringOtherApps: true)
-            NSApp.orderFrontCharacterPalette(nil)
-        }
-    }
-
-    private var hasCustomWatchFaceImage: Bool {
-        !watchFaceImagePath.isEmpty
-            && FileManager.default.fileExists(atPath: watchFaceImagePath)
-    }
-
-    private var customWatchFacePreview: NSImage? {
-        WatchFaceImageSettings.croppedImage(
-            path: watchFaceImagePath,
-            crop: WatchFaceImageSettings.normalizedCrop(
-                watchFaceImageCropRawValue
-            )
-        )
-    }
-
-    private func chooseCustomWatchFaceImage() {
-        watchFaceImageError = nil
-
-        let panel = NSOpenPanel()
-        panel.title = "选择表盘图片"
-        panel.message = "支持 PNG、JPEG、HEIC 等常见图片格式。"
-        panel.allowedContentTypes = [.image]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-
-            DispatchQueue.main.async {
-                guard let image = NSImage(contentsOf: url) else {
-                    watchFaceImageError = "无法读取所选图片。"
-                    return
-                }
-                watchFaceCropEditor = WatchFaceCropEditorState(
-                    image: image,
-                    initialCrop: WatchFaceImageSettings.centeredCrop(
-                        for: image
-                    ),
-                    existingPath: nil
-                )
-            }
-        }
-    }
-
-    private func editCustomWatchFaceImage() {
-        guard hasCustomWatchFaceImage,
-              let image = NSImage(contentsOfFile: watchFaceImagePath) else {
-            watchFaceImageError = "自定义图片已丢失，请重新上传。"
-            return
-        }
-
-        watchFaceImageError = nil
-        watchFaceCropEditor = WatchFaceCropEditorState(
-            image: image,
-            initialCrop: WatchFaceImageSettings.normalizedCrop(
-                watchFaceImageCropRawValue
-            ),
-            existingPath: watchFaceImagePath
-        )
-    }
-
-    private func applyWatchFaceCrop(
-        _ crop: CGRect,
-        editor: WatchFaceCropEditorState
-    ) {
-        let encodedCrop = WatchFaceImageSettings.encodedCrop(crop)
-
-        if editor.existingPath != nil {
-            watchFaceImageCropRawValue = encodedCrop
-            watchFaceImageError = nil
-            return
-        }
-
-        do {
-            let oldPath = watchFaceImagePath
-            let newPath = try WatchFaceImageSettings.saveImage(editor.image)
-            watchFaceImagePath = newPath
-            watchFaceImageCropRawValue = encodedCrop
-            watchFaceImageError = nil
-
-            if !oldPath.isEmpty, oldPath != newPath {
-                WatchFaceImageSettings.removeImage(at: oldPath)
-            }
-        } catch {
-            watchFaceImageError = error.localizedDescription
-        }
-    }
-
-    private func removeCustomWatchFaceImage() {
-        WatchFaceImageSettings.removeImage(at: watchFaceImagePath)
-        watchFaceImagePath = ""
-        watchFaceImageCropRawValue = ""
-        watchFaceImageError = nil
-    }
-
     private var musicControlsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -2940,10 +2559,6 @@ struct SettingsView: View {
             )
     }
 
-    private var selectedWatchFace: WatchFaceStyle {
-        WatchFaceStyle(rawValue: watchFaceStyleRaw) ?? .classic
-    }
-
     private var selectedSystemHUDStyle: SystemHUDStyle {
         SystemHUDStyle(rawValue: systemHUDStyleRaw) ?? .customOSD
     }
@@ -3038,49 +2653,6 @@ struct SettingsView: View {
             return "当前硬件接口可用。外接显示器暂不支持亮度控制。"
         }
         return "当前不可用：\(unavailable.joined(separator: "、"))。外接显示器亮度集成暂未启用。"
-    }
-
-    private func watchFaceButton(_ style: WatchFaceStyle) -> some View {
-        let isSelected = style == selectedWatchFace
-
-        return Button {
-            watchFaceStyleRaw = style.rawValue
-        } label: {
-            VStack(spacing: 4) {
-                WatchFaceView(
-                    style: style,
-                    accent: Color(nsColor: ArtworkPalette.fallback),
-                    animatesMotion: false,
-                    showsLiveTime: false
-                )
-                .scaleEffect(0.52)
-                .frame(width: 48, height: 48)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                )
-
-                Text(style.displayName)
-                    .font(.system(size: 9.5, weight: .medium))
-                    .foregroundStyle(isSelected ? .primary : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .settingsSelectionCard(
-                isSelected: isSelected,
-                cornerRadius: 12,
-                selectedFillOpacity: 0.16,
-                selectedBorderOpacity: 0.72,
-                selectedBorderWidth: 1,
-                unselectedBorderWidth: 1
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .help(style.displayName)
-        .accessibilityLabel("表盘 \(style.displayName)")
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var statusText: String {
