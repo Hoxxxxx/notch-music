@@ -6,6 +6,20 @@
         <description>NotchMusic 更新日志</description>
         <language>zh-cn</language>
         <item>
+            <title>Version 0.5.1</title>
+            <description><![CDATA[修复更新检查无法获取更新信息的问题：更新源迁移到 GitHub Pages。]]></description>
+            <pubDate>Mon, 23 Nov 2026 03:49:55 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.5.1/NotchMusic-0.5.1.dmg"
+                sparkle:version="8"
+                sparkle:shortVersionString="0.5.1"
+                sparkle:edSignature="Fzvlg/HmtfhW0mNtuMVLtLBzLSl8WZZmLqOoRuNzUEoRpvH62PNW6dYaiATehAnNrsiou3Aq1cZ0/6jWNTgEDw=="
+                length="16030135"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        </item>
+        <item>
             <title>Version 0.5.0</title>
             <description><![CDATA[NotchMusic 0.5.0
 
