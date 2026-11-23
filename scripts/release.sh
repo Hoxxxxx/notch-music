@@ -10,8 +10,13 @@
 
 set -euo pipefail
 
-SPARKLE_BIN_DIR="${SPARKLE_BIN_DIR:-/tmp/sparkle-tools/bin}"
 REPO="Hoxxxxx/notch-music"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [[ -z "${SPARKLE_BIN_DIR:-}" && -x "$ROOT/.build/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update" ]]; then
+    SPARKLE_BIN_DIR="$ROOT/.build/SourcePackages/artifacts/sparkle/Sparkle/bin"
+fi
+SPARKLE_BIN_DIR="${SPARKLE_BIN_DIR:-/tmp/sparkle-tools/bin}"
 
 if [[ $# -lt 1 ]]; then
     echo "用法: $0 <版本号> [更新说明]"
@@ -21,9 +26,8 @@ fi
 VERSION="$1"
 NOTES="${2:-NotchMusic $VERSION}"
 TAG="v$VERSION"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PBXPROJ="$ROOT/NotchMusic.xcodeproj/project.pbxproj"
-APPCAST="$ROOT/appcast.xml"
+APPCAST="$ROOT/docs/appcast.xml"
 BUILD_DIR="$ROOT/build/release"
 DMG_DIR="$ROOT/dist"
 DMG_NAME="NotchMusic-$VERSION.dmg"
@@ -106,7 +110,10 @@ s = open(path).read()
 if f'sparkle:shortVersionString="{version}"' in s:
     s = re.sub(r'        <item>\n(.*?</item>\n)', item, s, count=1, flags=re.S)
 else:
-    s = s.replace('<items>', '<items>\n' + item, 1)
+    marker = '        <item>'
+    if marker not in s:
+        raise SystemExit('appcast.xml 中找不到 <item> 插入位置')
+    s = s.replace(marker, item + marker, 1)
 open(path, 'w').write(s)
 print("appcast.xml 已更新")
 PYEOF
@@ -114,7 +121,7 @@ PYEOF
 # ---------- 6. 提交并创建 Release ----------
 echo "==> 提交版本变更..."
 cd "$ROOT"
-git add appcast.xml NotchMusic.xcodeproj/project.pbxproj
+git add docs/appcast.xml NotchMusic.xcodeproj/project.pbxproj
 git commit -m "Release $VERSION (build $NEW_BUILD)" || true
 git push origin main
 git tag -f "$TAG"
@@ -136,4 +143,4 @@ fi
 echo ""
 echo "✅ 发布完成: $TAG (build $NEW_BUILD)"
 echo "   DMG: $DMG_PATH"
-echo "   appcast: https://raw.githubusercontent.com/$REPO/main/appcast.xml"
+echo "   appcast: https://hoxxxxx.github.io/notch-music/appcast.xml"
