@@ -6,6 +6,32 @@
         <description>NotchMusic 更新日志</description>
         <language>zh-cn</language>
         <item>
+            <title>Version 0.6.0</title>
+            <description><![CDATA[NotchMusic 0.6.0
+
+新增
+- 锁屏播放组件：锁屏后在屏幕中央显示 Apple Music 卡片，支持播放控制、进度拖动和同步歌词
+- 锁屏组件支持液态玻璃与深色玻璃背景，可在设置中预览或关闭
+- 展开刘海新增电池状态，显示电量与电源状态
+- 接入电源、电量过低和充满时显示电池 HUD，可调整阈值和显示时长
+- 设置页新增电池分类，提供状态、HUD 选项和测试入口
+
+优化
+- 刘海与锁屏歌词使用连续字号过渡，滚动时当前行放大、相邻行缩小
+- 调整锁屏歌词行距与上下留白
+- 系统 HUD 高度与文字布局更紧凑]]></description>
+            <pubDate>Wed, 25 Nov 2026 09:24:51 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.6.0/NotchMusic-0.6.0.dmg"
+                sparkle:version="9"
+                sparkle:shortVersionString="0.6.0"
+                sparkle:edSignature="o71b5sWJOi8zxS4vn84+uCY7WOyq0D0HSRl7hlkXNt5ReFC72eu3AsMppPp2fODbQP1Yq4+2MvfJ1q6gSvfhBg=="
+                length="16218502"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        </item>
+        <item>
             <title>Version 0.5.1</title>
             <description><![CDATA[修复更新检查无法获取更新信息的问题：更新源迁移到 GitHub Pages。]]></description>
             <pubDate>Mon, 23 Nov 2026 03:49:55 +0000</pubDate>
