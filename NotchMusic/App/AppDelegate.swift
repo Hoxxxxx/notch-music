@@ -224,12 +224,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let systemActivityMonitor = SystemActivityMonitor()
     let audioSpectrumMonitor = AudioSpectrumMonitor()
     let systemHUDController = SystemHUDController()
+    let batteryMonitor = BatteryMonitor()
     let appVolumeMixer = AppVolumeMixer()
     let deviceConnectionMonitor = DeviceConnectionMonitor()
     let mouseScrollController = MouseScrollController()
 
     private var statusItem: NSStatusItem?
     private var panelController: NotchPanelController?
+    private var lockScreenPlaybackController: LockScreenPlaybackController?
     private var settingsWindowController: NSWindowController?
     private var onboardingWindowController: NSWindowController?
     private var cancellables: Set<AnyCancellable> = []
@@ -256,17 +258,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             systemActivityMonitor: systemActivityMonitor,
             audioSpectrumMonitor: audioSpectrumMonitor,
             systemHUDController: systemHUDController,
+            batteryMonitor: batteryMonitor,
             appVolumeMixer: appVolumeMixer,
             deviceConnectionMonitor: deviceConnectionMonitor,
             onOpenSettings: showSettings
         )
         panelController?.show()
+        lockScreenPlaybackController = LockScreenPlaybackController(
+            musicMonitor: musicMonitor,
+            systemActivityMonitor: systemActivityMonitor,
+            appVolumeMixer: appVolumeMixer
+        )
+        lockScreenPlaybackController?.start()
         configureStatusItem()
         observeMenuBarIconChanges()
         observeApplicationIconChanges()
         observePlaybackForSpectrum()
         observeScreenLockForHUD()
         systemHUDController.start()
+        batteryMonitor.start()
         appVolumeMixer.start()
         deviceConnectionMonitor.start()
         mouseScrollController.start()
@@ -286,9 +296,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         musicMonitor.stop()
+        lockScreenPlaybackController?.stop()
         systemActivityMonitor.stop()
         audioSpectrumMonitor.stop()
         systemHUDController.stop()
+        batteryMonitor.stop()
         appVolumeMixer.stop()
         deviceConnectionMonitor.stop()
         mouseScrollController.stop()
@@ -297,6 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         systemHUDController.refreshAvailability()
+        batteryMonitor.refresh()
         mouseScrollController.refreshAvailability()
     }
 
@@ -493,7 +506,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                     .environmentObject(systemActivityMonitor)
                     .environmentObject(audioSpectrumMonitor)
                     .environmentObject(systemHUDController)
+                    .environmentObject(batteryMonitor)
                     .environmentObject(mouseScrollController)
+                    .environmentObject(appVolumeMixer)
             )
             window.contentView?.wantsLayer = true
             window.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
@@ -522,5 +537,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func screenParametersDidChange() {
         panelController?.screenParametersDidChange()
+        lockScreenPlaybackController?.screenParametersDidChange()
     }
 }

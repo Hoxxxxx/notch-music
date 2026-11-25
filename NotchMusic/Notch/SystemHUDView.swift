@@ -459,10 +459,10 @@ struct SystemHUDView: View {
                 horizontalProgress(height: 7)
             }
         }
-        .padding(.leading, 4)
-        .padding(.trailing, 10)
+        .padding(.leading, 1)
+        .padding(.trailing, 13)
         .padding(.horizontal, 28)
-        .frame(maxWidth: .infinity, minHeight: 76, maxHeight: 76)
+        .frame(maxWidth: .infinity, minHeight: 66, maxHeight: 66)
     }
 
     private func iconBadge(size: CGFloat) -> some View {

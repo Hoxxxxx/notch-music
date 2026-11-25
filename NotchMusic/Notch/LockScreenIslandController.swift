@@ -16,17 +16,17 @@ final class LockScreenIslandController {
     private var delegatedWindowNumber = 0
 
     @discardableResult
-    func enter(panel: NSPanel) -> Bool {
+    func enter(panel: NSPanel, interactive: Bool = false) -> Bool {
         panel.level = NSWindow.Level(
             rawValue: Int(CGShieldingWindowLevel())
         )
-        panel.ignoresMouseEvents = true
+        panel.ignoresMouseEvents = !interactive
         panel.orderFrontRegardless()
         guard let skyLightSpace = LockScreenSkyLightSpace.shared,
               skyLightSpace.delegate(panel) else {
             logger.error("Unable to place notch panel in SkyLight space")
             panel.level = .statusBar
-            panel.ignoresMouseEvents = false
+            panel.ignoresMouseEvents = !interactive
             return false
         }
 
@@ -37,7 +37,7 @@ final class LockScreenIslandController {
         return true
     }
 
-    func leave(panel: NSPanel) {
+    func leave(panel: NSPanel, orderFront: Bool = true) {
         if delegatedWindowNumber != 0 {
             LockScreenSkyLightSpace.shared?.undelegate(
                 windowNumber: delegatedWindowNumber
@@ -46,7 +46,9 @@ final class LockScreenIslandController {
         }
         panel.level = .statusBar
         panel.ignoresMouseEvents = false
-        panel.orderFrontRegardless()
+        if orderFront {
+            panel.orderFrontRegardless()
+        }
         logger.info(
             "Notch panel restored: window=\(panel.windowNumber)"
         )

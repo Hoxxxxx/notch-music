@@ -13,9 +13,9 @@ enum SystemHUDStyle: String, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .island:
-            return "灵动岛"
+            return "紧凑"
         case .customOSD:
-            return "自定义 OSD"
+            return "标准"
         }
     }
 

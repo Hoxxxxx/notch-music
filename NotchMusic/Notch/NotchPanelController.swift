@@ -13,6 +13,7 @@ final class NotchPanelController {
     private let systemActivityMonitor: SystemActivityMonitor
     private let audioSpectrumMonitor: AudioSpectrumMonitor
     private let systemHUDController: SystemHUDController
+    private let batteryMonitor: BatteryMonitor
     private let appVolumeMixer: AppVolumeMixer
     private let deviceConnectionMonitor: DeviceConnectionMonitor
     private let onOpenSettings: () -> Void
@@ -33,6 +34,7 @@ final class NotchPanelController {
         systemActivityMonitor: SystemActivityMonitor,
         audioSpectrumMonitor: AudioSpectrumMonitor,
         systemHUDController: SystemHUDController,
+        batteryMonitor: BatteryMonitor,
         appVolumeMixer: AppVolumeMixer,
         deviceConnectionMonitor: DeviceConnectionMonitor,
         onOpenSettings: @escaping () -> Void
@@ -41,6 +43,7 @@ final class NotchPanelController {
         self.systemActivityMonitor = systemActivityMonitor
         self.audioSpectrumMonitor = audioSpectrumMonitor
         self.systemHUDController = systemHUDController
+        self.batteryMonitor = batteryMonitor
         self.appVolumeMixer = appVolumeMixer
         self.deviceConnectionMonitor = deviceConnectionMonitor
         self.onOpenSettings = onOpenSettings
@@ -80,6 +83,7 @@ final class NotchPanelController {
             systemActivityMonitor: systemActivityMonitor,
             audioSpectrumMonitor: audioSpectrumMonitor,
             systemHUDController: systemHUDController,
+            batteryMonitor: batteryMonitor,
             appVolumeMixer: appVolumeMixer,
             deviceConnectionMonitor: deviceConnectionMonitor,
             onOpenSettings: onOpenSettings

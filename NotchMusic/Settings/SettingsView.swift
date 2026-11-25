@@ -15,6 +15,7 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     case general
     case mouse
     case hud
+    case battery
     case music
     case detection
     case about
@@ -29,6 +30,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             return "鼠标"
         case .hud:
             return "HUD"
+        case .battery:
+            return "电池"
         case .music:
             return "音乐"
         case .detection:
@@ -46,6 +49,8 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
             return "computermouse.fill"
         case .hud:
             return "slider.horizontal.3"
+        case .battery:
+            return "battery.75"
         case .music:
             return "music.note"
         case .detection:
@@ -58,17 +63,19 @@ enum SettingsCategory: String, CaseIterable, Identifiable {
     var tint: Color {
         switch self {
         case .general:
-            return Color(red: 0.48, green: 0.52, blue: 0.62)
+            return Color(red: 0.62, green: 0.67, blue: 0.80)
         case .mouse:
-            return Color(red: 0.22, green: 0.64, blue: 0.72)
+            return Color(red: 0.30, green: 0.76, blue: 0.86)
         case .hud:
-            return Color(red: 0.66, green: 0.40, blue: 1.00)
+            return Color(red: 0.74, green: 0.50, blue: 1.00)
+        case .battery:
+            return Color(red: 0.35, green: 0.82, blue: 0.52)
         case .music:
-            return Color(red: 1.00, green: 0.34, blue: 0.38)
+            return Color(red: 1.00, green: 0.45, blue: 0.50)
         case .detection:
-            return Color(red: 1.00, green: 0.62, blue: 0.20)
+            return Color(red: 1.00, green: 0.70, blue: 0.28)
         case .about:
-            return Color(red: 0.52, green: 0.55, blue: 0.62)
+            return Color(red: 0.42, green: 0.66, blue: 1.00)
         }
     }
 }
@@ -138,7 +145,11 @@ struct SettingsView: View {
     @EnvironmentObject private var musicMonitor: MusicMonitor
     @EnvironmentObject private var systemActivityMonitor: SystemActivityMonitor
     @EnvironmentObject private var systemHUDController: SystemHUDController
+    @EnvironmentObject private var batteryMonitor: BatteryMonitor
     @EnvironmentObject private var mouseScrollController: MouseScrollController
+    @EnvironmentObject private var appVolumeMixer: AppVolumeMixer
+    @StateObject private var lockScreenPreviewModel =
+        LockScreenPlaybackModel()
     @AppStorage(SystemHUDSettings.style)
     private var systemHUDStyleRaw = SystemHUDStyle.customOSD.rawValue
     @AppStorage(SystemHUDSettings.volumeEnabled)
@@ -196,6 +207,11 @@ struct SettingsView: View {
     private var notchBackgroundEffectRaw = NotchBackgroundEffect.aurora.rawValue
     @AppStorage(NotchBackgroundSettings.alwaysVisible)
     private var notchBackgroundAlwaysVisible = false
+    @AppStorage(LockScreenPlaybackSettings.isEnabledKey)
+    private var showsLockScreenPlayback = true
+    @AppStorage(LockScreenPlaybackSettings.backgroundStyleKey)
+    private var lockScreenBackgroundStyleRaw =
+        LockScreenBackgroundStyle.tintedGlass.rawValue
     @AppStorage(NotchLayout.alwaysExpanded)
     private var keepsNotchExpanded = false
     @AppStorage(SystemDetectionSettings.screenRecordingDetection)
@@ -248,6 +264,20 @@ struct SettingsView: View {
     private var mouseScrollSpeed = 2.90
     @AppStorage(MouseScrollSettings.durationKey)
     private var mouseScrollDuration = 4.50
+    @AppStorage(BatteryHUDSettings.showsBatteryInNotch)
+    private var showsBatteryInNotch = true
+    @AppStorage(BatteryHUDSettings.chargingHUDEnabled)
+    private var chargingBatteryHUDEnabled = true
+    @AppStorage(BatteryHUDSettings.lowBatteryHUDEnabled)
+    private var lowBatteryHUDEnabled = true
+    @AppStorage(BatteryHUDSettings.fullBatteryHUDEnabled)
+    private var fullBatteryHUDEnabled = true
+    @AppStorage(BatteryHUDSettings.lowBatteryThreshold)
+    private var lowBatteryThresholdValue = 20
+    @AppStorage(BatteryHUDSettings.fullBatteryThreshold)
+    private var fullBatteryThresholdValue = 100
+    @AppStorage(BatteryHUDSettings.hudDuration)
+    private var batteryHUDDuration = 3.0
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -288,6 +318,7 @@ struct SettingsView: View {
         .onAppear {
             musicMonitor.refreshNow()
             systemHUDController.refreshAvailability()
+            batteryMonitor.refresh()
             mouseScrollController.refreshAvailability()
             draftNotchWidthAdjustment = notchWidthAdjustmentValue
             draftNotchHeightAdjustment = notchHeightAdjustmentValue
@@ -360,10 +391,25 @@ struct SettingsView: View {
                     }
                 }
 
+            case .battery:
+                VStack(spacing: 12) {
+                    glassCard {
+                        batteryStatusSection
+                    }
+
+                    glassCard {
+                        batteryHUDSection
+                    }
+                }
+
             case .music:
                 VStack(spacing: 12) {
                     glassCard {
                         musicSection
+                    }
+
+                    glassCard {
+                        lockScreenPlaybackSection
                     }
 
                     glassCard {
@@ -586,6 +632,269 @@ struct SettingsView: View {
                 .controlSize(.small)
             }
         }
+    }
+
+    private var batteryStatusSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                sectionHeader(
+                    title: "电池状态",
+                    systemImage: "battery.75"
+                )
+
+                Spacer()
+
+                Text("内置电池")
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            if let status = batteryMonitor.status {
+                HStack(spacing: 12) {
+                    BatteryLevelGlyph(
+                        level: status.level,
+                        tint: BatteryHUDAppearance.tint(for: status),
+                        width: 54,
+                        height: 26,
+                        isCharging: status.isCharging,
+                        isPluggedIn: status.isPluggedIn,
+                        animationDuration: 0.3
+                    )
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(batteryPowerStateText(status))
+                            .font(.system(size: 12, weight: .medium))
+
+                        Text(batteryPowerDetailText(status))
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Text("\(status.level)%")
+                        .font(
+                            .system(
+                                size: 20,
+                                weight: .bold,
+                                design: .rounded
+                            )
+                        )
+                        .monospacedDigit()
+                        .foregroundStyle(
+                            BatteryHUDAppearance.tint(for: status)
+                        )
+                }
+                .padding(10)
+                .background(
+                    Color.primary.opacity(0.035),
+                    in: RoundedRectangle(
+                        cornerRadius: 12,
+                        style: .continuous
+                    )
+                )
+
+                settingToggle(
+                    title: "在展开的刘海栏显示电池",
+                    detail: "显示当前电量和电源状态",
+                    systemImage: "battery.50percent",
+                    isOn: $showsBatteryInNotch
+                )
+            } else {
+                Text("当前 Mac 没有可用的内置电池。")
+                    .settingsCaption()
+            }
+        }
+    }
+
+    private var batteryHUDSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "电量提醒",
+                systemImage: "bell.badge.fill"
+            )
+
+            Text("接入电源、电量过低或充满时，在刘海区域短暂显示电池状态。")
+                .settingsCaption()
+
+            settingToggle(
+                title: "接入电源时提醒",
+                detail: "插上电源后显示充电状态",
+                systemImage: "bolt.fill",
+                isOn: $chargingBatteryHUDEnabled
+            )
+            .disabled(!batteryMonitor.hasBattery)
+
+            settingToggle(
+                title: "电量低时提醒",
+                detail: "电量降到阈值时显示提醒",
+                systemImage: "battery.25",
+                isOn: $lowBatteryHUDEnabled
+            )
+            .disabled(!batteryMonitor.hasBattery)
+
+            settingToggle(
+                title: "充满时提醒",
+                detail: "电量达到阈值时显示提醒",
+                systemImage: "battery.100",
+                isOn: $fullBatteryHUDEnabled
+            )
+            .disabled(!batteryMonitor.hasBattery)
+
+            Divider()
+                .opacity(0.5)
+
+            batterySlider(
+                title: "低电量阈值",
+                value: lowBatteryThresholdBinding,
+                range: 5...30,
+                suffix: "%"
+            )
+            .disabled(!batteryMonitor.hasBattery || !lowBatteryHUDEnabled)
+            .opacity(
+                batteryMonitor.hasBattery && lowBatteryHUDEnabled ? 1 : 0.5
+            )
+
+            batterySlider(
+                title: "充满阈值",
+                value: fullBatteryThresholdBinding,
+                range: 80...100,
+                suffix: "%"
+            )
+            .disabled(!batteryMonitor.hasBattery || !fullBatteryHUDEnabled)
+            .opacity(
+                batteryMonitor.hasBattery && fullBatteryHUDEnabled ? 1 : 0.5
+            )
+
+            batterySlider(
+                title: "显示时长",
+                value: $batteryHUDDuration,
+                range: 1...10,
+                suffix: " 秒"
+            )
+            .disabled(!batteryMonitor.hasBattery)
+            .opacity(batteryMonitor.hasBattery ? 1 : 0.5)
+
+            Divider()
+                .opacity(0.5)
+
+            HStack(spacing: 8) {
+                batteryTestButton(
+                    title: "充电",
+                    systemImage: "bolt.fill",
+                    kind: .charging
+                )
+                .disabled(
+                    !batteryMonitor.hasBattery || !chargingBatteryHUDEnabled
+                )
+
+                batteryTestButton(
+                    title: "低电量",
+                    systemImage: "battery.25",
+                    kind: .lowBattery
+                )
+                .disabled(
+                    !batteryMonitor.hasBattery || !lowBatteryHUDEnabled
+                )
+
+                batteryTestButton(
+                    title: "已充满",
+                    systemImage: "battery.100",
+                    kind: .fullBattery
+                )
+                .disabled(
+                    !batteryMonitor.hasBattery || !fullBatteryHUDEnabled
+                )
+            }
+
+            Text("测试按钮会立即显示对应的真实刘海 HUD。")
+                .settingsCaption()
+        }
+    }
+
+    private var lowBatteryThresholdBinding: Binding<Double> {
+        Binding(
+            get: { Double(lowBatteryThresholdValue) },
+            set: {
+                lowBatteryThresholdValue = Int($0.rounded())
+            }
+        )
+    }
+
+    private var fullBatteryThresholdBinding: Binding<Double> {
+        Binding(
+            get: { Double(fullBatteryThresholdValue) },
+            set: {
+                fullBatteryThresholdValue = Int($0.rounded())
+            }
+        )
+    }
+
+    private func batterySlider(
+        title: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        suffix: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 11.5, weight: .medium))
+
+                Spacer()
+
+                Text("\(Int(value.wrappedValue.rounded()))\(suffix)")
+                    .font(.system(size: 11, weight: .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+
+            Slider(value: value, in: range, step: 1)
+                .tint(.green)
+        }
+    }
+
+    private func batteryTestButton(
+        title: String,
+        systemImage: String,
+        kind: BatteryHUDKind
+    ) -> some View {
+        Button {
+            batteryMonitor.showTestHUD(kind)
+        } label: {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 11, weight: .medium))
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+    }
+
+    private func batteryPowerStateText(_ status: BatteryReading) -> String {
+        if status.isFullyCharged {
+            return "已充满"
+        }
+        if status.isCharging {
+            return "正在充电"
+        }
+        if status.isPluggedIn {
+            return "已接入电源"
+        }
+        return "正在使用电池"
+    }
+
+    private func batteryPowerDetailText(_ status: BatteryReading) -> String {
+        if status.isInLowPowerMode {
+            return "低电量模式已开启"
+        }
+        if let minutes = status.timeToFullCharge {
+            return "预计 \(minutes) 分钟充满"
+        }
+        if status.isPluggedIn {
+            return "电源已连接"
+        }
+        return "未连接电源"
     }
 
     private var selectedLightingStyle: LightingHUDStyle {
@@ -1033,6 +1342,114 @@ struct SettingsView: View {
             }
         }
     }
+
+    private var lockScreenPlaybackSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(
+                title: "锁屏播放组件",
+                systemImage: "lock.rectangle"
+            )
+
+            Text("锁屏后在屏幕中央显示当前播放的 Apple Music 卡片，支持播放控制、进度拖动和同步歌词。")
+                .settingsCaption()
+
+            settingToggle(
+                title: "显示锁屏播放组件",
+                detail: "关闭后锁屏时不再显示播放卡片",
+                systemImage: "lock.display",
+                isOn: $showsLockScreenPlayback
+            )
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("背景效果")
+                    .font(.system(size: 11.5, weight: .medium))
+
+                SettingsPageTabs(
+                    titles: LockScreenBackgroundStyle.allCases.map(\.title),
+                    selectedIndex: LockScreenBackgroundStyle.allCases
+                        .firstIndex(of: lockScreenBackgroundStyle) ?? 1
+                ) { index in
+                    lockScreenBackgroundStyleRaw =
+                        LockScreenBackgroundStyle.allCases[index].rawValue
+                }
+
+                Text(
+                    lockScreenBackgroundStyle == .liquidGlass
+                        ? "使用系统原生液态玻璃，透明度更高，会透出更多锁屏背景。"
+                        : "使用深色着色玻璃，文字对比度更稳定。"
+                )
+                .settingsCaption()
+            }
+
+            Divider()
+                .opacity(0.5)
+
+            lockScreenPlaybackPreview
+
+            Text(
+                musicMonitor.snapshot == nil
+                    ? "当前没有播放内容，预览使用示例数据。"
+                    : "预览会跟随当前播放的歌曲更新。"
+            )
+            .settingsCaption()
+        }
+    }
+
+    private var lockScreenPlaybackPreview: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.16, green: 0.18, blue: 0.30),
+                    Color(red: 0.34, green: 0.20, blue: 0.28)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            LockScreenPlaybackView(
+                musicMonitor: musicMonitor,
+                appVolumeMixer: appVolumeMixer,
+                model: lockScreenPreviewModel,
+                snapshotOverride: lockScreenPreviewSnapshot,
+                allowsInteraction: false
+            )
+            .frame(width: 386, height: 190)
+        }
+        .frame(height: 220)
+        .clipShape(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.10), lineWidth: 0.8)
+        }
+        .opacity(showsLockScreenPlayback ? 1 : 0.5)
+        .grayscale(showsLockScreenPlayback ? 0 : 0.6)
+        .accessibilityHidden(true)
+    }
+
+    private var lockScreenPreviewSnapshot: MusicSnapshot {
+        musicMonitor.snapshot ?? Self.lockScreenPlaceholderSnapshot
+    }
+
+    private var lockScreenBackgroundStyle: LockScreenBackgroundStyle {
+        LockScreenBackgroundStyle(rawValue: lockScreenBackgroundStyleRaw)
+            ?? .tintedGlass
+    }
+
+    private static let lockScreenPlaceholderSnapshot = MusicSnapshot(
+        trackID: "NotchMusic.settings.lockScreenPreview",
+        title: "NotchMusic",
+        artist: "Apple Music",
+        album: "",
+        duration: 244,
+        position: 96,
+        isPlaying: false,
+        volume: 0.8,
+        isShuffleEnabled: false,
+        artwork: nil,
+        sampledAt: Date()
+    )
 
     private var iconSettingsSection: some View {
         VStack(alignment: .leading, spacing: 10) {

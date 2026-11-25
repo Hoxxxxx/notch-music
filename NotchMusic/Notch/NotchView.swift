@@ -264,6 +264,7 @@ struct NotchView: View {
     @ObservedObject var systemActivityMonitor: SystemActivityMonitor
     @ObservedObject var audioSpectrumMonitor: AudioSpectrumMonitor
     @ObservedObject var systemHUDController: SystemHUDController
+    @ObservedObject var batteryMonitor: BatteryMonitor
     @ObservedObject var appVolumeMixer: AppVolumeMixer
     @ObservedObject var deviceConnectionMonitor: DeviceConnectionMonitor
     let onOpenSettings: () -> Void
@@ -293,6 +294,8 @@ struct NotchView: View {
     private var systemHUDStyleRaw = SystemHUDStyle.customOSD.rawValue
     @AppStorage(SoundHUDSettings.content)
     private var soundHUDContentRaw = SoundHUDContent.device.rawValue
+    @AppStorage(BatteryHUDSettings.showsBatteryInNotch)
+    private var showsBatteryInNotch = true
     @AppStorage(SystemDetectionSettings.screenRecordingIndicator)
     private var showsScreenRecordingIndicator = true
     @AppStorage(SystemDetectionSettings.focusIndicator)
@@ -352,6 +355,40 @@ struct NotchView: View {
         let action: () -> Void
     }
 
+    private struct TransientHUDMetrics {
+        let width: CGFloat
+        let height: CGFloat
+        let topRadius: CGFloat
+        let bottomRadius: CGFloat
+    }
+
+    private func transientHUDMetrics(
+        for batteryKind: BatteryHUDKind?
+    ) -> TransientHUDMetrics {
+        switch batteryKind {
+        case .charging, .lowBattery, .fullBattery:
+            return TransientHUDMetrics(
+                width: BatteryHUDLayout.width(
+                    notchWidth: panelState.notchWidth
+                ),
+                height: BatteryHUDLayout.height(
+                    topInset: panelState.topInset
+                ),
+                topRadius: BatteryHUDLayout.cornerRadius,
+                bottomRadius: BatteryHUDLayout.cornerRadius
+            )
+        case nil:
+            let topRadius = NotchLayout.expandedTopCornerRadius
+            return TransientHUDMetrics(
+                width:
+                    panelState.notchWidth + 28 + topRadius * 2,
+                height: 86,
+                topRadius: topRadius,
+                bottomRadius: 22
+            )
+        }
+    }
+
     private var accent: Color {
         Color(nsColor: musicMonitor.snapshot?.accentColor ?? ArtworkPalette.fallback)
     }
@@ -383,9 +420,18 @@ struct NotchView: View {
             deviceConnection == nil && !systemActivityMonitor.isScreenLocked
                 ? systemHUDController.presentation
                 : nil
-        let showsNotchSideHUD = systemHUDPresentation != nil
+        let batteryHUDPresentation =
+            deviceConnection == nil
+                && !systemActivityMonitor.isScreenLocked
+                && systemHUDPresentation == nil
+                ? batteryMonitor.presentation
+                : nil
+        let hasTransientHUD =
+            systemHUDPresentation != nil
+                || batteryHUDPresentation != nil
+        let showsNotchSideHUD = hasTransientHUD
             && selectedSystemHUDStyle == .island
-        let showsExpandedHUD = systemHUDPresentation != nil
+        let showsExpandedHUD = hasTransientHUD
             && !showsNotchSideHUD
         let usesExpandedLayout =
             !showsNotchSideHUD && (panelState.isExpanded || showsExpandedHUD)
@@ -396,7 +442,7 @@ struct NotchView: View {
         let showsArtwork =
             (usesExpandedLayout || compactPresentation == .playback)
                 && !lyricsArtworkHidden
-        let hasSystemHUD = systemHUDPresentation != nil
+        let hasSystemHUD = hasTransientHUD
         let showsScreenStateIconOnly =
             !usesExpandedLayout
                 && !showsNotchSideHUD
@@ -407,17 +453,16 @@ struct NotchView: View {
                 && !showsNotchSideHUD
         let hoverPreviewWidth: CGFloat = showsHoverPreview ? 18 : 0
         let hoverPreviewHeight: CGFloat = showsHoverPreview ? 4 : 0
-        let hudHeight: CGFloat = 96
-        let hudTopCornerRadius = NotchLayout.expandedTopCornerRadius
-        let hudWidth =
-            panelState.notchWidth + 28 + hudTopCornerRadius * 2
+        let hudMetrics = transientHUDMetrics(
+            for: batteryHUDPresentation?.kind
+        )
         let topCornerRadius: CGFloat = showsExpandedHUD
-            ? hudTopCornerRadius
+            ? hudMetrics.topRadius
             : usesExpandedLayout
             ? NotchLayout.expandedTopCornerRadius
             : 10
         let bottomCornerRadius: CGFloat = showsExpandedHUD
-            ? 22
+            ? hudMetrics.bottomRadius
             : usesExpandedLayout
             ? 24
             : showsNotchSideHUD ? 20 : showsScreenStateIconOnly ? 12 : 14
@@ -430,14 +475,14 @@ struct NotchView: View {
             width: showsNotchSideHUD
                 ? NotchLayout.sideHUDWidth(notchWidth: panelState.notchWidth)
                 : showsExpandedHUD
-                ? hudWidth
+                ? hudMetrics.width
                 : usesExpandedLayout
                 ? expandedPanelWidth
                 : compactWidth,
             height: showsNotchSideHUD
                 ? panelState.topInset
                 : showsExpandedHUD
-                ? hudHeight
+                ? hudMetrics.height
                 : usesExpandedLayout
                 ? expandedPanelHeight
                 : panelState.topInset + hoverPreviewHeight
@@ -571,6 +616,17 @@ struct NotchView: View {
                             with: .scale(scale: 0.97, anchor: .top)
                         )
                     )
+                } else if showsNotchSideHUD,
+                          let presentation = batteryHUDPresentation {
+                    NotchSideBatteryHUDView(
+                        presentation: presentation,
+                        notchWidth: panelState.notchWidth
+                    )
+                    .transition(
+                        .opacity.combined(
+                            with: .scale(scale: 0.97, anchor: .top)
+                        )
+                    )
                 } else {
                     ZStack(alignment: .topLeading) {
                         if usesExpandedLayout {
@@ -581,9 +637,21 @@ struct NotchView: View {
                                     style: selectedSystemHUDStyle,
                                     albumAccent: accent
                                 )
-                                .padding(.top, 10)
-                                .padding(.bottom, 10)
+                                .padding(.top, 15)
+                                .padding(.bottom, 5)
                                 .transition(expandedContentTransition)
+                            } else if let presentation = batteryHUDPresentation,
+                                      showsExpandedHUD {
+                                BatteryHUDView(
+                                    presentation: presentation,
+                                    topInset: panelState.topInset
+                                )
+                                    .frame(
+                                        width: hudMetrics.width,
+                                        height: hudMetrics.height,
+                                        alignment: .topLeading
+                                    )
+                                    .transition(expandedContentTransition)
                             } else {
                                 expandedPageContent(width: size.width)
                                     .frame(
@@ -852,6 +920,10 @@ struct NotchView: View {
             value: systemHUDController.presentation
         )
         .animation(
+            systemHUDPresentationAnimation,
+            value: batteryMonitor.presentation
+        )
+        .animation(
             compactPresentationAnimation,
             value: compactPresentation
         )
@@ -938,6 +1010,7 @@ struct NotchView: View {
         notchTransitionAnimation(
             opening: panelState.isExpanded
                 || systemHUDController.presentation != nil
+                || batteryMonitor.presentation != nil
                 || compactPresentation != nil
         )
     }
@@ -945,6 +1018,7 @@ struct NotchView: View {
     private var systemHUDPresentationAnimation: Animation {
         notchTransitionAnimation(
             opening: systemHUDController.presentation != nil
+                || batteryMonitor.presentation != nil
         )
     }
 
@@ -1047,7 +1121,10 @@ struct NotchView: View {
         let hasSystemHUD =
             deviceConnectionMonitor.presentation == nil
             && !systemActivityMonitor.isScreenLocked
-            && systemHUDController.presentation != nil
+            && (
+                systemHUDController.presentation != nil
+                    || batteryMonitor.presentation != nil
+            )
 
         return contentRevealAnimation(expanded: hasSystemHUD)
     }
@@ -1576,6 +1653,10 @@ struct NotchView: View {
 
     private var expandedTrailingControls: some View {
         HStack(spacing: 8) {
+            if showsBatteryInNotch, let status = batteryMonitor.status {
+                NotchBatteryStatusView(status: status)
+            }
+
             if systemActivityIconCount > 0 {
                 expandedSystemActivity
             }
