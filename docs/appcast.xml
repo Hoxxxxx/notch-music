@@ -6,6 +6,38 @@
         <description>Hill 更新日志</description>
         <language>zh-cn</language>
         <item>
+            <title>Version 0.7.0</title>
+            <description><![CDATA[Hill 0.7.0
+
+变更
+- 项目更名为 Hill，应用图标与界面文案同步更新
+- 锁屏播放新增「胶片海报」样式
+
+新增
+- 设置新增「授权」分类，可集中检查并重新授权
+- 歌词本地缓存 7 天，减少重复请求
+
+优化
+- 降低播放、锁屏和空闲状态下的 CPU/GPU 与轮询开销
+- 缓存 AppleScript、封面和歌词布局
+- AirPods 连接提示立即显示，电量异步补全
+
+修复
+- 修复拖动进度或音量出界后面板自动收起
+- 修复 App 音量权限提示不显示
+- 修复锁屏卡片预览切换样式时撑宽设置内容]]></description>
+            <pubDate>Fri, 27 Nov 2026 02:46:21 +0000</pubDate>
+            <enclosure
+                url="https://github.com/Hoxxxxx/notch-music/releases/download/v0.7.0/Hill-0.7.0.dmg"
+                sparkle:version="10"
+                sparkle:shortVersionString="0.7.0"
+                sparkle:edSignature="Pdndczas1G+qAtgxz1Uy4/M4rG37F80BmjR+6FsZUKH1Gx2No3Gmp/sVOrw2dO4NhIBDgjdDW+B5id2hp74IBw=="
+                length="16313226"
+                type="application/octet-stream"
+            />
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        </item>
+        <item>
             <title>Version 0.6.0</title>
             <description><![CDATA[NotchMusic 0.6.0
 
