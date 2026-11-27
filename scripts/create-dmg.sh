@@ -1,5 +1,5 @@
 #!/bin/zsh
-# 用法: ./scripts/create-dmg.sh <NotchMusic.app 路径> <版本号> <输出 dmg 路径>
+# 用法: ./scripts/create-dmg.sh <Hill.app 路径> <版本号> <输出 dmg 路径>
 # 生成带背景、图标布局和 Applications 快捷方式的安装镜像
 
 set -euo pipefail
@@ -14,10 +14,10 @@ VERSION="$2"
 OUT_PATH="$3"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BG_DIR="$ROOT/scripts/dmg"
-VOLNAME="NotchMusic $VERSION"
+VOLNAME="Hill $VERSION"
 MOUNT=""
-TMP_DMG="$(mktemp -u /tmp/notchmusic-dmg.XXXXXX).dmg"
-STAGE="$(mktemp -d /tmp/notchmusic-stage.XXXXXX)"
+TMP_DMG="$(mktemp -u /tmp/hill-dmg.XXXXXX).dmg"
+STAGE="$(mktemp -d /tmp/hill-stage.XXXXXX)"
 
 cleanup() {
     if [[ -n "$MOUNT" && -d "$MOUNT" ]]; then
@@ -66,7 +66,7 @@ tell application "Finder"
         set arrangement of viewOptions to not arranged
         set icon size of viewOptions to 128
         set background picture of viewOptions to file ".background:background.png"
-        set position of item "NotchMusic.app" of container window to {178, 168}
+        set position of item "Hill.app" of container window to {178, 168}
         set position of item "Applications" of container window to {482, 168}
         update without registering applications
         delay 1

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# NotchMusic 发布脚本：构建 Release -> 打包 DMG -> Sparkle 签名 -> 更新 appcast.xml -> 创建 GitHub Release
+# Hill 发布脚本：构建 Release -> 打包 DMG -> Sparkle 签名 -> 更新 appcast.xml -> 创建 GitHub Release
 #
 # 用法: ./scripts/release.sh <版本号> [更新说明]
 # 示例: ./scripts/release.sh 0.3.0 "新增自动更新功能"
@@ -24,13 +24,13 @@ if [[ $# -lt 1 ]]; then
 fi
 
 VERSION="$1"
-NOTES="${2:-NotchMusic $VERSION}"
+NOTES="${2:-Hill $VERSION}"
 TAG="v$VERSION"
-PBXPROJ="$ROOT/NotchMusic.xcodeproj/project.pbxproj"
+PBXPROJ="$ROOT/Hill.xcodeproj/project.pbxproj"
 APPCAST="$ROOT/docs/appcast.xml"
 BUILD_DIR="$ROOT/build/release"
 DMG_DIR="$ROOT/dist"
-DMG_NAME="NotchMusic-$VERSION.dmg"
+DMG_NAME="Hill-$VERSION.dmg"
 DMG_PATH="$DMG_DIR/$DMG_NAME"
 
 if [[ ! -x "$SPARKLE_BIN_DIR/sign_update" ]]; then
@@ -58,8 +58,8 @@ echo "版本: $VERSION (build $NEW_BUILD)"
 # ---------- 2. 构建 Release ----------
 echo "==> 构建 Release..."
 mkdir -p "$BUILD_DIR"
-xcodebuild -project "$ROOT/NotchMusic.xcodeproj" \
-    -scheme NotchMusic \
+xcodebuild -project "$ROOT/Hill.xcodeproj" \
+    -scheme Hill \
     -configuration Release \
     -destination 'generic/platform=macOS' \
     -IDEPackageSupportDisableManifestSandbox=1 \
@@ -67,7 +67,7 @@ xcodebuild -project "$ROOT/NotchMusic.xcodeproj" \
     CONFIGURATION_BUILD_DIR="$BUILD_DIR" \
     build >/dev/null
 
-APP_PATH="$BUILD_DIR/NotchMusic.app"
+APP_PATH="$BUILD_DIR/Hill.app"
 [[ -d "$APP_PATH" ]] || { echo "错误: 构建产物不存在 $APP_PATH"; exit 1; }
 
 # ---------- 3. 打包 DMG ----------
@@ -121,7 +121,7 @@ PYEOF
 # ---------- 6. 提交并创建 Release ----------
 echo "==> 提交版本变更..."
 cd "$ROOT"
-git add docs/appcast.xml NotchMusic.xcodeproj/project.pbxproj
+git add docs/appcast.xml Hill.xcodeproj/project.pbxproj
 git commit -m "Release $VERSION (build $NEW_BUILD)" || true
 git push origin main
 git tag -f "$TAG"

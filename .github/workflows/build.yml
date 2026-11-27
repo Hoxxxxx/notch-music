@@ -21,8 +21,8 @@ jobs:
       - name: Build
         run: |
           xcodebuild \
-            -project NotchMusic.xcodeproj \
-            -scheme NotchMusic \
+            -project Hill.xcodeproj \
+            -scheme Hill \
             -configuration Debug \
             -derivedDataPath .build \
             CODE_SIGNING_ALLOWED=NO \

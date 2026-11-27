@@ -1,0 +1,555 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000040 /* HillApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000020 /* HillApp.swift */; };
+		A10000000000000000000041 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000021 /* AppDelegate.swift */; };
+		A10000000000000000000042 /* NotchGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* NotchGeometry.swift */; };
+		A10000000000000000000043 /* NotchPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000023 /* NotchPanelController.swift */; };
+		A10000000000000000000044 /* NotchPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000024 /* NotchPanelState.swift */; };
+		A10000000000000000000045 /* NotchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* NotchView.swift */; };
+		A10000000000000000000046 /* MusicSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* MusicSnapshot.swift */; };
+		A10000000000000000000047 /* AppleMusicClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000027 /* AppleMusicClient.swift */; };
+		A10000000000000000000048 /* MusicMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000028 /* MusicMonitor.swift */; };
+		A10000000000000000000049 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000029 /* SettingsView.swift */; };
+		A1000000000000000000004A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* Assets.xcassets */; };
+		A1000000000000000000004C /* SystemActivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002B /* SystemActivityMonitor.swift */; };
+		A1000000000000000000004E /* AudioSpectrumMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002C /* AudioSpectrumMonitor.swift */; };
+		A1000000000000000000004F /* SystemHUDController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002D /* SystemHUDController.swift */; };
+		A100000000000000000000F0 /* DefaultsKeyObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F1 /* DefaultsKeyObserver.swift */; };
+		A100000000000000000000F2 /* LyricsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F3 /* LyricsCache.swift */; };
+		A10000000000000000000050 /* MediaKeyInterceptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002E /* MediaKeyInterceptor.swift */; };
+		A10000000000000000000051 /* SystemControlBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000002F /* SystemControlBackend.swift */; };
+		A10000000000000000000052 /* SystemHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000030 /* SystemHUDView.swift */; };
+		A1000000000000000000009B /* VolumeIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009A /* VolumeIslandView.swift */; };
+		A1000000000000000000009D /* AppVolumeMixer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009C /* AppVolumeMixer.swift */; };
+		A1000000000000000000009F /* LyricsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000009E /* LyricsProvider.swift */; };
+		A100000000000000000000A1 /* MusicLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A0 /* MusicLyricsView.swift */; };
+		A100000000000000000000A3 /* LockScreenPlaybackController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A2 /* LockScreenPlaybackController.swift */; };
+		A100000000000000000000A5 /* LockScreenLiquidGlassBackdrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A4 /* LockScreenLiquidGlassBackdrop.swift */; };
+		A100000000000000000000A8 /* BatteryMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A6 /* BatteryMonitor.swift */; };
+		A100000000000000000000A9 /* BatteryHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000A7 /* BatteryHUDView.swift */; };
+		A10000000000000000000065 /* LockScreenIslandController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000064 /* LockScreenIslandController.swift */; };
+		A10000000000000000000066 /* CalendarIslandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000067 /* CalendarIslandView.swift */; };
+		A100000000000000000000F4 /* CalendarDateWheel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F5 /* CalendarDateWheel.swift */; };
+		A100000000000000000000F6 /* NotchBackgroundEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F7 /* NotchBackgroundEffects.swift */; };
+		A100000000000000000000F8 /* NotchTiming.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000000000000000000F9 /* NotchTiming.swift */; };
+		A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000069 /* DeviceConnectionMonitor.swift */; };
+		A1000000000000000000006A /* AirPodsPro3DView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006B /* AirPodsPro3DView.swift */; };
+		A1000000000000000000006C /* AirPodsPro.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006D /* AirPodsPro.usdz */; };
+		A1000000000000000000006E /* AirPods.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000006F /* AirPods.usdz */; };
+		A10000000000000000000070 /* AirPodsMax.usdz in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000071 /* AirPodsMax.usdz */; };
+		A10000000000000000000072 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000073 /* Sparkle */; };
+		A10000000000000000000077 /* AlbumArtworkLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000076 /* AlbumArtworkLibrary.swift */; };
+		A10000000000000000000086 /* HillProgressViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000078 /* HillProgressViews.swift */; };
+		A10000000000000000000087 /* HillBackgrounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000079 /* HillBackgrounds.swift */; };
+		A10000000000000000000088 /* HillCompactViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007A /* HillCompactViews.swift */; };
+		A10000000000000000000089 /* HillInteractions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007B /* HillInteractions.swift */; };
+		A1000000000000000000008A /* SettingsViewComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007C /* SettingsViewComponents.swift */; };
+		A1000000000000000000008C /* SettingsViewStyles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007E /* SettingsViewStyles.swift */; };
+		A1000000000000000000008D /* MouseScrollController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000007F /* MouseScrollController.swift */; };
+		A1000000000000000000008E /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000080 /* OnboardingView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000009 /* Hill.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hill.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000000000000000000020 /* HillApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HillApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000021 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A10000000000000000000022 /* NotchGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchGeometry.swift; sourceTree = "<group>"; };
+		A10000000000000000000023 /* NotchPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchPanelController.swift; sourceTree = "<group>"; };
+		A10000000000000000000024 /* NotchPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchPanelState.swift; sourceTree = "<group>"; };
+		A10000000000000000000025 /* NotchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchView.swift; sourceTree = "<group>"; };
+		A10000000000000000000026 /* MusicSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicSnapshot.swift; sourceTree = "<group>"; };
+		A10000000000000000000027 /* AppleMusicClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleMusicClient.swift; sourceTree = "<group>"; };
+		A10000000000000000000028 /* MusicMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicMonitor.swift; sourceTree = "<group>"; };
+		A10000000000000000000029 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A1000000000000000000002B /* SystemActivityMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemActivityMonitor.swift; sourceTree = "<group>"; };
+		A1000000000000000000002C /* AudioSpectrumMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSpectrumMonitor.swift; sourceTree = "<group>"; };
+		A1000000000000000000002D /* SystemHUDController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHUDController.swift; sourceTree = "<group>"; };
+		A100000000000000000000F1 /* DefaultsKeyObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultsKeyObserver.swift; sourceTree = "<group>"; };
+		A100000000000000000000F3 /* LyricsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsCache.swift; sourceTree = "<group>"; };
+		A1000000000000000000002E /* MediaKeyInterceptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaKeyInterceptor.swift; sourceTree = "<group>"; };
+		A1000000000000000000002F /* SystemControlBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemControlBackend.swift; sourceTree = "<group>"; };
+		A10000000000000000000030 /* SystemHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemHUDView.swift; sourceTree = "<group>"; };
+		A1000000000000000000009A /* VolumeIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VolumeIslandView.swift; sourceTree = "<group>"; };
+		A1000000000000000000009C /* AppVolumeMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVolumeMixer.swift; sourceTree = "<group>"; };
+		A1000000000000000000009E /* LyricsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LyricsProvider.swift; sourceTree = "<group>"; };
+		A100000000000000000000A0 /* MusicLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicLyricsView.swift; sourceTree = "<group>"; };
+		A100000000000000000000A2 /* LockScreenPlaybackController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenPlaybackController.swift; sourceTree = "<group>"; };
+		A100000000000000000000A4 /* LockScreenLiquidGlassBackdrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenLiquidGlassBackdrop.swift; sourceTree = "<group>"; };
+		A100000000000000000000A6 /* BatteryMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryMonitor.swift; sourceTree = "<group>"; };
+		A100000000000000000000A7 /* BatteryHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatteryHUDView.swift; sourceTree = "<group>"; };
+		A10000000000000000000064 /* LockScreenIslandController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenIslandController.swift; sourceTree = "<group>"; };
+		A10000000000000000000067 /* CalendarIslandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarIslandView.swift; sourceTree = "<group>"; };
+		A100000000000000000000F5 /* CalendarDateWheel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDateWheel.swift; sourceTree = "<group>"; };
+		A100000000000000000000F7 /* NotchBackgroundEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchBackgroundEffects.swift; sourceTree = "<group>"; };
+		A100000000000000000000F9 /* NotchTiming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotchTiming.swift; sourceTree = "<group>"; };
+		A10000000000000000000069 /* DeviceConnectionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConnectionMonitor.swift; sourceTree = "<group>"; };
+		A1000000000000000000006B /* AirPodsPro3DView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirPodsPro3DView.swift; sourceTree = "<group>"; };
+		A1000000000000000000006D /* AirPodsPro.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPodsPro.usdz; sourceTree = "<group>"; };
+		A1000000000000000000006F /* AirPods.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPods.usdz; sourceTree = "<group>"; };
+		A10000000000000000000071 /* AirPodsMax.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = AirPodsMax.usdz; sourceTree = "<group>"; };
+		A10000000000000000000076 /* AlbumArtworkLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlbumArtworkLibrary.swift; sourceTree = "<group>"; };
+		A10000000000000000000078 /* HillProgressViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HillProgressViews.swift; sourceTree = "<group>"; };
+		A10000000000000000000079 /* HillBackgrounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HillBackgrounds.swift; sourceTree = "<group>"; };
+		A1000000000000000000007A /* HillCompactViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HillCompactViews.swift; sourceTree = "<group>"; };
+		A1000000000000000000007B /* HillInteractions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HillInteractions.swift; sourceTree = "<group>"; };
+		A1000000000000000000007C /* SettingsViewComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewComponents.swift; sourceTree = "<group>"; };
+		A1000000000000000000007E /* SettingsViewStyles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewStyles.swift; sourceTree = "<group>"; };
+		A1000000000000000000007F /* MouseScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseScrollController.swift; sourceTree = "<group>"; };
+		A10000000000000000000080 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1000000000000000000000C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000072 /* Sparkle in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000002 = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000004 /* Hill */,
+				A10000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A10000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000009 /* Hill.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000004 /* Hill */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000005 /* App */,
+				A10000000000000000000006 /* Notch */,
+				A10000000000000000000007 /* Music */,
+				A1000000000000000000004D /* System */,
+				A10000000000000000000008 /* Settings */,
+				A10000000000000000000057 /* Resources */,
+				A10000000000000000000015 /* Assets.xcassets */,
+				A10000000000000000000014 /* Info.plist */,
+			);
+			path = Hill;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000005 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000020 /* HillApp.swift */,
+				A10000000000000000000021 /* AppDelegate.swift */,
+				A10000000000000000000080 /* OnboardingView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000006 /* Notch */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000022 /* NotchGeometry.swift */,
+				A10000000000000000000023 /* NotchPanelController.swift */,
+				A10000000000000000000024 /* NotchPanelState.swift */,
+				A10000000000000000000025 /* NotchView.swift */,
+				A10000000000000000000064 /* LockScreenIslandController.swift */,
+				A100000000000000000000A2 /* LockScreenPlaybackController.swift */,
+				A100000000000000000000A4 /* LockScreenLiquidGlassBackdrop.swift */,
+				A100000000000000000000A7 /* BatteryHUDView.swift */,
+				A10000000000000000000030 /* SystemHUDView.swift */,
+				A10000000000000000000067 /* CalendarIslandView.swift */,
+				A100000000000000000000F5 /* CalendarDateWheel.swift */,
+				A100000000000000000000F7 /* NotchBackgroundEffects.swift */,
+				A100000000000000000000F9 /* NotchTiming.swift */,
+				A1000000000000000000009A /* VolumeIslandView.swift */,
+				A100000000000000000000A0 /* MusicLyricsView.swift */,
+				A1000000000000000000006B /* AirPodsPro3DView.swift */,
+				A10000000000000000000078 /* HillProgressViews.swift */,
+				A10000000000000000000079 /* HillBackgrounds.swift */,
+				A1000000000000000000007A /* HillCompactViews.swift */,
+				A1000000000000000000007B /* HillInteractions.swift */,
+			);
+			path = Notch;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000007 /* Music */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000026 /* MusicSnapshot.swift */,
+				A10000000000000000000027 /* AppleMusicClient.swift */,
+				A10000000000000000000028 /* MusicMonitor.swift */,
+				A1000000000000000000009E /* LyricsProvider.swift */,
+				A100000000000000000000F3 /* LyricsCache.swift */,
+				A1000000000000000000002C /* AudioSpectrumMonitor.swift */,
+				A10000000000000000000076 /* AlbumArtworkLibrary.swift */,
+			);
+			path = Music;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000008 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000029 /* SettingsView.swift */,
+				A1000000000000000000007C /* SettingsViewComponents.swift */,
+				A1000000000000000000007E /* SettingsViewStyles.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		A1000000000000000000004D /* System */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000002B /* SystemActivityMonitor.swift */,
+				A1000000000000000000002D /* SystemHUDController.swift */,
+				A100000000000000000000F1 /* DefaultsKeyObserver.swift */,
+				A100000000000000000000A6 /* BatteryMonitor.swift */,
+				A1000000000000000000002E /* MediaKeyInterceptor.swift */,
+				A1000000000000000000002F /* SystemControlBackend.swift */,
+				A10000000000000000000069 /* DeviceConnectionMonitor.swift */,
+				A1000000000000000000007F /* MouseScrollController.swift */,
+				A1000000000000000000009C /* AppVolumeMixer.swift */,
+			);
+			path = System;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000057 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000006D /* AirPodsPro.usdz */,
+				A1000000000000000000006F /* AirPods.usdz */,
+				A10000000000000000000071 /* AirPodsMax.usdz */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1000000000000000000000A /* Hill */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1000000000000000000000F /* Build configuration list for PBXNativeTarget "Hill" */;
+			buildPhases = (
+				A1000000000000000000000B /* Sources */,
+				A1000000000000000000000C /* Frameworks */,
+				A1000000000000000000000D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Hill;
+			packageProductDependencies = (
+				A10000000000000000000073 /* Sparkle */,
+			);
+			productName = Hill;
+			productReference = A10000000000000000000009 /* Hill.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2710;
+				LastUpgradeCheck = 2710;
+				TargetAttributes = {
+					A1000000000000000000000A = {
+						CreatedOnToolsVersion = 27.1;
+					};
+				};
+			};
+			buildConfigurationList = A1000000000000000000000E /* Build configuration list for PBXProject "Hill" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A10000000000000000000002;
+			packageReferences = (
+				A10000000000000000000074 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
+			productRefGroup = A10000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1000000000000000000000A /* Hill */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1000000000000000000000D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000000000000000000004A /* Assets.xcassets in Resources */,
+				A1000000000000000000006C /* AirPodsPro.usdz in Resources */,
+				A1000000000000000000006E /* AirPods.usdz in Resources */,
+				A10000000000000000000070 /* AirPodsMax.usdz in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1000000000000000000000B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000040 /* HillApp.swift in Sources */,
+				A10000000000000000000041 /* AppDelegate.swift in Sources */,
+				A10000000000000000000042 /* NotchGeometry.swift in Sources */,
+				A10000000000000000000043 /* NotchPanelController.swift in Sources */,
+				A10000000000000000000044 /* NotchPanelState.swift in Sources */,
+				A10000000000000000000045 /* NotchView.swift in Sources */,
+				A10000000000000000000046 /* MusicSnapshot.swift in Sources */,
+				A10000000000000000000047 /* AppleMusicClient.swift in Sources */,
+				A10000000000000000000048 /* MusicMonitor.swift in Sources */,
+				A10000000000000000000049 /* SettingsView.swift in Sources */,
+				A1000000000000000000004C /* SystemActivityMonitor.swift in Sources */,
+				A1000000000000000000004E /* AudioSpectrumMonitor.swift in Sources */,
+				A1000000000000000000004F /* SystemHUDController.swift in Sources */,
+				A100000000000000000000F0 /* DefaultsKeyObserver.swift in Sources */,
+				A10000000000000000000050 /* MediaKeyInterceptor.swift in Sources */,
+				A10000000000000000000051 /* SystemControlBackend.swift in Sources */,
+				A10000000000000000000052 /* SystemHUDView.swift in Sources */,
+				A10000000000000000000065 /* LockScreenIslandController.swift in Sources */,
+				A10000000000000000000066 /* CalendarIslandView.swift in Sources */,
+				A100000000000000000000F4 /* CalendarDateWheel.swift in Sources */,
+				A100000000000000000000F6 /* NotchBackgroundEffects.swift in Sources */,
+				A100000000000000000000F8 /* NotchTiming.swift in Sources */,
+				A1000000000000000000009B /* VolumeIslandView.swift in Sources */,
+				A1000000000000000000009D /* AppVolumeMixer.swift in Sources */,
+				A1000000000000000000009F /* LyricsProvider.swift in Sources */,
+				A100000000000000000000F2 /* LyricsCache.swift in Sources */,
+				A100000000000000000000A1 /* MusicLyricsView.swift in Sources */,
+				A100000000000000000000A3 /* LockScreenPlaybackController.swift in Sources */,
+				A100000000000000000000A5 /* LockScreenLiquidGlassBackdrop.swift in Sources */,
+				A100000000000000000000A9 /* BatteryHUDView.swift in Sources */,
+				A100000000000000000000A8 /* BatteryMonitor.swift in Sources */,
+				A10000000000000000000068 /* DeviceConnectionMonitor.swift in Sources */,
+				A1000000000000000000006A /* AirPodsPro3DView.swift in Sources */,
+				A10000000000000000000077 /* AlbumArtworkLibrary.swift in Sources */,
+				A10000000000000000000086 /* HillProgressViews.swift in Sources */,
+				A10000000000000000000087 /* HillBackgrounds.swift in Sources */,
+				A10000000000000000000088 /* HillCompactViews.swift in Sources */,
+				A10000000000000000000089 /* HillInteractions.swift in Sources */,
+				A1000000000000000000008A /* SettingsViewComponents.swift in Sources */,
+				A1000000000000000000008C /* SettingsViewStyles.swift in Sources */,
+				A1000000000000000000008D /* MouseScrollController.swift in Sources */,
+				A1000000000000000000008E /* OnboardingView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A10000000000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A10000000000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		A10000000000000000000012 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 9;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Hill/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.6.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.hoxxxxx.NotchMusic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		A10000000000000000000013 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 9;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Hill/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.6.0;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.hoxxxxx.NotchMusic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1000000000000000000000E /* Build configuration list for PBXProject "Hill" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000010 /* Debug */,
+				A10000000000000000000011 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1000000000000000000000F /* Build configuration list for PBXNativeTarget "Hill" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000012 /* Debug */,
+				A10000000000000000000013 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A10000000000000000000074 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A10000000000000000000073 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A10000000000000000000074 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+	};
+	rootObject = A10000000000000000000001 /* Project object */;
+}
